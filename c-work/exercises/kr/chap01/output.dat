@@ -1,0 +1,96 @@
+
+#include <stdio.h>
+
+
+char b[] = "''', /// \\, abfdl /*, */, //* '*/, you'd better keep this line as it was ";
+char a = '"';
+#define debug "/*for debug */, ha ha */, /*, /* you cannot remove this line */"
+
+static int in_comment = 0; 
+static int in_quote = 0; 
+static int in_char = 0; 
+
+static int remove_comment( FILE *in, FILE *out );
+
+int main( int argc, char **argv ) {
+  if ( remove_comment( stdin, stdout ) != 0 ) {
+    printf( "error: error when removing comments\n" );
+    return 0;
+  }
+  return 0;
+}
+
+static int remove_comment( FILE *in, FILE *out ) {
+  char ch, prev, next;
+  while ( (ch = fgetc( in )) != EOF ) {
+    
+    if ( ch == '\\' ) {
+      
+      fputc( ch, out );
+      ch = fgetc( in );
+      if ( ch == EOF ) {
+	break;
+      }
+    }
+    if ( ch == '/' ) {
+      if ( (ch = fgetc( in )) == '*' && !in_quote ) {
+	in_comment = 1;
+	while ( in_comment ) {
+	  
+	  while ( (ch = fgetc( in )) != EOF && ch != '*' )
+	    ;
+	  if ( ch == EOF ) {
+	    break;
+	  }
+	  
+	  next = fgetc( in );
+	  if ( next == EOF ) {
+	    break;
+	  }
+	  if ( next == '/' ) {
+	    
+	    
+	    ch = fgetc( in );
+	    if ( ch == EOF ) {
+	      break;
+	    }
+	    in_comment = 0;
+	  } else {
+	    
+	    ch = next;
+	  }
+	}
+      } else {
+	if ( ch == EOF ) {
+	  break;
+	}
+	
+	fputc( '/', out );
+      }
+    }
+
+    
+    if ( ch == '\'' && !in_quote ) {
+      prev = fgetc( in );
+      next = fgetc( in );
+      if ( next == '\'' ) {
+	in_char = 1;
+      } else {
+	in_char = 0;
+      }
+      ungetc( next, in );
+      ungetc( prev, in );
+    }
+    if ( ch == '"' && !in_char ) {
+      if ( in_quote ) {
+	in_quote = 0;
+      } else {
+	in_quote = 1;
+      }
+    } 
+
+    fputc( ch, out );
+  }
+  return 0;
+}
+

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<list>
+	<playlist>
+		<name>My Favorite</name>
+		<song>
+			<name>
+				My Heart will go on
+			</name>
+		</song>
+		<song>
+			<name>You are my frind</name>
+			<filename>you-are-my.wma</filename>
+			<size>8374</size>
+		</song>
+		<song>
+			<name>
+				Yesterday once more
+			</name>
+		</song>
+	</playlist>
+	<playlist>
+		<name>The rock</name>
+		<song>
+			<name>We are the world</name>
+			<path>/home/alex/music</path>
+			<filename>we-are-theworkd.mp3</filename>
+			<size>1234</size>
+		</song>
+	</playlist>
+	<playlist>
+		<name>played recently</name>
+		<song>
+			<name>like a rock</name>
+			<path>/media/MULTIMEDIA/Audio/Songs</path>
+			<size>3456</size>
+			<filename>
+				like-a-rock.mp3
+			</filename>
+		</song>
+		<song>
+			<name> take me to your heart </name>
+			<path> /home </path>
+			<size> 8793 </size>
+			<filename> take-me-to your heart.wma </filename>
+		</song>
+	</playlist>
+</list>

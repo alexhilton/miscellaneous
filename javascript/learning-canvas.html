@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Learning the Canvas</title>
+        <script type="text/javascript">
+            function initialize() {
+                var canvas = document.getElementById("canvas");
+                var ctx = canvas.getContext("2d");
+                ctx.beginPath();
+                ctx.moveTo(10, 20);
+                ctx.lineTo(12, 24);
+                ctx.closePath();
+                ctx.stroke();
+            }
+        </script>
+    </head>
+    <body onload="initialize();">
+        <canvas id="canvas">Upgrade your browser to support HTML5</canvas>
+    </body>
+</html>

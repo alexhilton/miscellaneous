@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Insurance analysis</title>
+        <style>
+            .right {text-align: right}
+            .cell{width: 100px}
+            .table{text-align: center; border-width: 2px; padding: 2px; margin: 20px}
+            #panel{border-width: 1px}
+        </style>
+        <script type="text/javascript">
+            function analyzeInsurance() {
+                var insuranceValue = [420.00, 1390.00, 2430.00, 4030.00, 5740.00, 7560.00, 9490.00, 11540.00, 13710.00, 16020.00, 18600.00, 21330.00, 24220.00, 27270.00, 30490.00, 33910.00, 37500.00, 41280.00, 45270.00, 49460.00, 51340.00, 53270.00, 55260.00, 57310.00, 59420.00, 61610.00, 63850.00, 66140.00, 68490.00, 70920.00, 73420.00, 75950.00, 78530.00, 81140.00, 83790.00, 86500.00, 89200.00, 91890.00, 94570.00, 97240.00, 99900.00, 102490.00, 105070.00, 107630.00, 110190.00, 112770.00, 115250.00, 117640.00, 119950.00, 122180.00, 124280.00, 126270.00, 128150.00, 129930.00, 131620.00, 133210.00, 134820.00, 136460.00, 138170.00, 139980.00, 141930.00, 143940.00, 146050.00, 148290.00, 150680.00, 153280.00, 155740.00, 158090.00, 160420.00, 162710.00, 164970.00, 167200.00, 169430.00, 171680.00, 174000.00, 176440.00, 179150.00];
+                var anualFee = document.getElementsByName("anual_fee")[0].value;
+                var yearsToPay = document.getElementsByName("years_to_pay")[0].value;
+                var anualInterest = document.getElementsByName("interest")[0].value;
+                anualInterest = anualInterest.substr(0, anualInterest.length-1) / 100.0;
+                var basicCompensation = document.getElementsByName("compensation")[0].value;
+                var interestIllness = document.getElementsByName("interest_illness")[0].value;
+                interestIllness = interestIllness.substr(0, interestIllness.length-1) / 100.0;
+                var interestDeath = document.getElementsByName("interest_death")[0].value;
+                interestDeath = interestDeath.substr(0, interestDeath.length-1) / 100.0;
+                var startAge = document.getElementsByName("start_age")[0].value;
+                var age = ++startAge;
+                var years = 100 - age;
+                var table = document.getElementById("detail");
+                var illMarked = false;
+                var deadMarked = false;
+                for (var y = 1; y <= years; y++, age++) {
+                    var paid = getPaid(yearsToPay, y, anualInterest, anualFee);
+                    var ill = getCompensation(basicCompensation, interestIllness, y);
+                    var dead = getCompensation(basicCompensation, interestDeath, y);
+                    appendRow(y, age, paid.toFixed(2), insuranceValue[y-1].toFixed(2), ill.toFixed(2), dead.toFixed(2));
+                    if (!deadMarked && paid >= dead) {
+                        var row = table.rows[y+1];
+                        row.style.backgroundColor = "#f23f32";
+                        row.cells[2].style.backgroundColor = "#fff32f";
+                        row.cells[5].style.backgroundColor = "#fff32f";
+                        deadMarked = true;
+                    }
+                    if (!illMarked && paid >= ill) {
+                        row = table.rows[y+1];
+                        row.style.backgroundColor = "#f23f32";
+                        row.cells[2].style.backgroundColor = "#fff32f";
+                        row.cells[4].style.backgroundColor = "#fff32f";
+                        illMarked = true;
+                    }
+                }
+                table.rows[44].style.backgroundColor = "#f23f32";
+            }
+
+            function getPaid(yearsToPay, year, interest, capital) {
+                var sum = 0;
+                var c = 1 + interest;
+                if (year <= yearsToPay) {
+                    for (var y = 1; y <= year; y++) {
+                        sum += capital * Math.pow(c, y);
+                    }
+                } else {
+                    for (var y = 1; y <= yearsToPay; y++) {
+                        sum += capital * Math.pow(c, y);
+                    }
+                    sum *= Math.pow(c, year-yearsToPay);
+                }
+                return sum;
+            }
+
+            function getCompensation(base, rate, year) {
+                return base * (1 + rate*year);
+            }
+
+            function appendRow(y, age, paid, value, illComp, deadComp) {
+                var table = document.getElementById("detail");
+                var row = table.insertRow(-1);
+                row.insertCell(0).appendChild(document.createTextNode(y));
+                row.insertCell(1).appendChild(document.createTextNode(age));
+                var cellPaid = row.insertCell(2);
+                cellPaid.setAttribute("class", "right");
+                cellPaid.appendChild(document.createTextNode(paid));
+                var cellValue = row.insertCell(3);
+                cellValue.setAttribute("class", "right");
+                cellValue.appendChild(document.createTextNode(value));
+                var cellIll = row.insertCell(4);
+                cellIll.setAttribute("class", "right");
+                cellIll.appendChild(document.createTextNode(illComp));
+                var cellDead = row.insertCell(5);
+                cellDead.setAttribute("class", "right");
+                cellDead.appendChild(document.createTextNode(deadComp));
+            }
+        </script>
+    </head>
+    <body onload="analyzeInsurance()">
+        <form>
+            <table id="panel">
+                <tr>
+                    <td class="right">Anual fee:</td>
+                    <td><input class="right" type="TEXT" name="anual_fee" value="4420" /></td>
+                </tr>
+                <tr>
+                    <td class="right">Years to pay:</td>
+                    <td><input class="right" type="TEXT" name="years_to_pay" value="20" /></td>
+                </tr>
+                <tr>
+                    <td class="right">Anual interest:</td>
+                    <td><input class="right" type="TEXT" name="interest" value="3%" /></td>
+                </tr>
+                <tr>
+                    <td class="right">Basic compensation:</td>
+                    <td><input class="right" type="TEXT" name="compensation" value="100000" /></td>
+                </tr>
+                <tr>
+                    <td class="right">Interest for Illness:</td>
+                    <td><input class="right" type=TEXT" name="interest_illness" value="3%" /></td>
+                </tr>
+                <tr>
+                    <td class="right">Interest for death:</td>
+                    <td><input class="right" type="TEXT" name="interest_death" value="1%" /></td>
+                </tr>
+                <tr>
+                    <td class="right">Start age:</td>
+                    <td><input class="right" type="TEXT" name="start_age" value="23" /></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td><input style="width: 100%" type="BUTTON" name="calculate" value="Analyze" onclick="analyzeInsurance()" /></td>
+                </tr>
+            </table>
+        </form>
+        <table id="detail" class="table">
+            <tr>
+                <th class="cell">Years</th>
+                <th class="cell">Age</th>
+                <th class="cell">Paid</th>
+                <th class="cell">Insurance Value</th>
+                <th class="cell">Comp Illness</th>
+                <th class="cell">Comp Death</th>
+            </tr>
+            <tr>
+                <td>0</td>
+                <td>23</td>
+                <td class="right">4420.00</td>
+                <td class="right">0.00</td>
+                <td class="right">14420.00</td>
+                <td class="right">14420.00</td>
+            </tr>
+    </body>
+</html>

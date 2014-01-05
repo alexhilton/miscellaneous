@@ -1,0 +1,10 @@
+总用量 21
+drwx------. 1 alex alex  280  4月 25 23:39 exercise
+-rwx------. 1 alex alex 1191  3月 27 23:32 find_copy_unzip.pl
+-rwx------. 1 alex alex 1232  3月 29 17:14 latest_load.pl
+-rwx------. 1 alex alex 1560  4月  9 11:57 latest_source.pl
+-rwx------. 1 alex alex    0  4月 25 23:39 ls.err
+-rwx------. 1 alex alex    0  4月 25 23:39 ls.out
+-rwx------. 1 alex alex  819  4月 20 21:19 replace.pl
+-rwx------. 1 alex alex 1191  3月 27 23:32 runcommand.pl
+-rwx------. 1 alex alex  157  4月 15 20:57 test_pattern.pl

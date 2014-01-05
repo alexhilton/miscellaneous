@@ -1,0 +1,1008 @@
+head	1.4;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.4
+date	2009.10.22.01.15.22;	author alex;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2009.10.21.01.31.37;	author alex;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2009.10.20.01.44.08;	author alex;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2009.10.19.02.03.01;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@'Exit' works fine.
+'Cut', 'copy' and 'paste' work fine.
+'about' works fine, but we need to extend its contents.
+'window close' works fine.
+We need to work on 'new', 'open', 'save', search and 'help'.
+@
+
+
+1.4
+log
+@Now new, open, save can work as expected.
+Search still needs some work.
+@
+text
+@/*
+ * $Header: /home/alex/work/gtk-work/foundation-gtk/chap07/editor.c,v 1.3 2009/10/21 01:31:37 alex Exp alex $
+ * $Author: alex $
+ * $Date: 2009/10/21 01:31:37 $
+ * RCS_ID: $Id: editor.c,v 1.3 2009/10/21 01:31:37 alex Exp alex $
+ *
+ * editor.c
+ * solution to exercise 0701
+ * Create a editor
+ * 
+ * $Revision: 1.3 $
+ * $Log: editor.c,v $
+ * Revision 1.3  2009/10/21 01:31:37  alex
+ * Open and save added.
+ * new need some efforts.
+ * open, save, new and search need more efforts to be perfect.
+ *
+ * Revision 1.2  2009/10/20 01:44:08  alex
+ * Search feature added.
+ * There are 'save', 'open' and 'new' to be implemented.
+ * 'search' is not perfect, needing more work.
+ *
+ * Revision 1.1  2009/10/19 02:03:01  alex
+ * Initial revision
+ *
+ */
+#include <gtk/gtk.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+/* Key structure of this program, used to deliver data between functions */
+typedef struct {
+  GtkWindow *window; /* main window */
+  GtkButton *save; /* button save */
+  GtkTextView *textview; /* the textview */
+  gboolean has_saved; /* whether the current has been saved since last edit */
+  const gchar *filename; /* the file name */
+} Data;
+
+/* response of quit prompt dialog */
+enum { OPTION_CANCEL = 0x00, OPTION_DISCARD = 0x01, OPTION_SAVE = 0x02,
+       OPTION_NEXT_MATCH = 0x03 };
+
+/*
+ * Called before leaving Super Edit. It will prompt user to save the text if it
+ * has not been saved since last edit. 
+ * If user click 'Discard' or 'Save', it will prompt a dialog ask user whether
+ * to leave.
+ * If user click 'Cancel' during save prompt dialog, we won't leave.
+ */
+static gboolean before_exit( GtkWindow *window, Data *data );
+static void exit_clicked( GtkButton *exit, Data *data );
+static void cut_clicked( GtkButton *cut, Data *data );
+static void copy_clicked( GtkButton *copy, GtkTextView *textview );
+static void paste_clicked( GtkButton *paste, Data *data );
+static void help_clicked( GtkButton *help, Data *data );
+/*
+ * If It is the fisrt time to save the text, i.e. the file name is NULL, we
+ * prompt user to select a filename by file chooser dialog. Then write current
+ * texts in text buffer into the file selected. Finally, re-initialize the
+ * save status.  
+ */
+static void save_clicked( GtkButton *save, Data *data );
+/*
+ * If the text has not been saved since last edit, it will prompt user to save
+ * the text first. If 'Cancel' clicked during save prompt, we won't open a file.
+ * Otherwise, we open a file by prompting a open file dialog and loading the
+ * contents of the file selected into text buffer.
+ */
+static void open_clicked( GtkButton *open, Data *data );
+/*
+ * If the text has not been saved since last edit, it will prompt user to save
+ * the text first. If 'Cancel' clicked during save prompt, we won't new a file.
+ * Otherwise, we new a file: re-initialize filename, save status and text buffer.
+ */
+static void new_clicked( GtkButton *new, Data *data );
+/*
+ * Set save status as FALSE, because there is a edit.
+ */
+static void text_changed( GtkTextView *textview, gchar *ch, Data *data );
+static void about_clicked( GtkButton *about, Data *data );
+/*
+ * Search the text backward and forward. Each click of 'Next Match' will forward
+ * the text iter, if any match found. If no match found, a dialog is prompted by
+ * calling no_match().
+ */
+static void search_clicked( GtkButton *search, Data *data );
+static void no_match( GtkWindow *window, gpointer data );
+static gboolean do_search( const gchar *pattern, GtkTextIter *start, gboolean is_forward );
+/*
+ * The event handler for signal 'delete-event' of window, must be like this,
+ * otherwise, it does not work.
+ */
+static gboolean window_close( GtkWindow *window, GdkEvent *event, gpointer data );
+/*
+ * True implementor of save action. Returning true indicates that 'Accept' has
+ * been clicked, which means the text has been saved to a file. On the contrary,
+ * that 'Cancel' is clicked indicating user  don't want to save would return
+ * FALSE.
+ */
+static gboolean do_save( GtkButton *save, Data *data );
+
+int main( int argc, char **argv ) {
+  /* Initialize gtk */
+  gtk_init( &argc, &argv );
+  /* Create and set properties of the main window */
+  GtkWidget *window = gtk_window_new( GTK_WINDOW_TOPLEVEL );
+  gtk_window_set_title( GTK_WINDOW( window ), "Super Edit" );
+  gtk_container_set_border_width( GTK_CONTAINER( window ), 10 );
+  gtk_widget_set_size_request( window, 800, 600 );
+
+  /* The top button bar contains all functional buttons  */
+  GtkWidget *exit = gtk_button_new_from_stock( GTK_STOCK_CLOSE );
+  GtkWidget *new = gtk_button_new_from_stock( GTK_STOCK_NEW );
+  GtkWidget *open = gtk_button_new_from_stock( GTK_STOCK_OPEN );
+  GtkWidget *save = gtk_button_new_from_stock( GTK_STOCK_SAVE );
+  gtk_widget_set_sensitive( save, FALSE );
+  GtkWidget *cut = gtk_button_new_from_stock( GTK_STOCK_CUT );
+  GtkWidget *copy = gtk_button_new_from_stock( GTK_STOCK_COPY );
+  GtkWidget *paste = gtk_button_new_from_stock( GTK_STOCK_PASTE );
+  GtkWidget *search = gtk_button_new_from_stock( GTK_STOCK_FIND );
+  GtkWidget *about = gtk_button_new_from_stock( GTK_STOCK_ABOUT );
+  GtkWidget *help = gtk_button_new_from_stock( GTK_STOCK_HELP );
+
+  /* text view and scrolled window, the text edit window */
+  GtkWidget *scrolled_window = gtk_scrolled_window_new( NULL, NULL );
+  gtk_scrolled_window_set_policy( GTK_SCROLLED_WINDOW( scrolled_window ),
+				    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC );
+  GtkWidget *textview = gtk_text_view_new();
+  gtk_container_add( GTK_CONTAINER( scrolled_window ), textview );
+  gtk_container_set_border_width( GTK_CONTAINER( scrolled_window ), 5 );
+
+  /* 
+   * Set some properties of textview
+   * In order: font, wrap-mode, justification/alignment, editable, margins 
+   */
+  PangoFontDescription *font = pango_font_description_from_string( "Monospace Bold 10" );
+  gtk_widget_modify_font( textview, font );
+  gtk_text_view_set_wrap_mode( GTK_TEXT_VIEW( textview ), GTK_WRAP_WORD );
+  /*
+   * Justification is alignment, left alignment, right alignment or central
+   * alignment.
+   */
+  gtk_text_view_set_justification( GTK_TEXT_VIEW( textview ), GTK_JUSTIFY_LEFT );
+  gtk_text_view_set_editable( GTK_TEXT_VIEW( textview ), TRUE );
+  gtk_text_view_set_cursor_visible( GTK_TEXT_VIEW( textview ), TRUE );
+  gtk_text_view_set_pixels_above_lines( GTK_TEXT_VIEW( textview ), 3 );
+  gtk_text_view_set_pixels_below_lines( GTK_TEXT_VIEW( textview ), 2 );
+  gtk_text_view_set_pixels_inside_wrap( GTK_TEXT_VIEW( textview ), 5 );
+  gtk_text_view_set_left_margin( GTK_TEXT_VIEW( textview ), 5 );
+  gtk_text_view_set_right_margin( GTK_TEXT_VIEW( textview ), 5 );
+
+  /* Define and initialize the data agent */
+  Data data;
+  data.window = GTK_WINDOW( window );
+  data.save = GTK_BUTTON( save );
+  data.textview = GTK_TEXT_VIEW( textview );
+  data.has_saved = TRUE;
+  data.filename = NULL;
+
+  /* Connect widgets and their signal handlers, to make editor work */
+  g_signal_connect( G_OBJECT( window ), "delete_event", 
+		    G_CALLBACK( window_close ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( exit ), "clicked", 
+		    G_CALLBACK( exit_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( cut ), "clicked",
+		    G_CALLBACK( cut_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( save ), "clicked",
+		    G_CALLBACK( save_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( copy ), "clicked",
+		    G_CALLBACK( copy_clicked ), (gpointer) textview );
+  g_signal_connect( G_OBJECT( paste ), "clicked", 
+		    G_CALLBACK( paste_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( help ), "clicked",
+		    G_CALLBACK( help_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( about ), "clicked",
+		    G_CALLBACK( about_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( textview ), "insert_at_cursor",
+		    G_CALLBACK( text_changed ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( search ), "clicked",
+		    G_CALLBACK( search_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( new ), "clicked",
+		    G_CALLBACK( new_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( open ), "clicked",
+		    G_CALLBACK( open_clicked ), (gpointer) &data );
+  
+  /* Organize and arrange these widgets and show them on main window */
+  GtkWidget *hbox = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox ), exit, FALSE, TRUE, 0 );
+  gtk_box_pack_start( GTK_BOX( hbox ), new, FALSE, TRUE, 0 );
+  gtk_box_pack_start( GTK_BOX( hbox ), open, FALSE, TRUE, 0 );
+  gtk_box_pack_start( GTK_BOX( hbox ), save, FALSE, TRUE, 0 );
+  gtk_box_pack_start( GTK_BOX( hbox ), cut, FALSE, TRUE, 0 );
+  gtk_box_pack_start( GTK_BOX( hbox ), copy, FALSE, TRUE, 0 );
+  gtk_box_pack_start( GTK_BOX( hbox ), paste, FALSE, TRUE, 0 );
+  gtk_box_pack_start( GTK_BOX( hbox ), search, FALSE, TRUE, 0 );
+  gtk_box_pack_start( GTK_BOX( hbox ), help, FALSE, TRUE, 0 );
+  gtk_box_pack_start( GTK_BOX( hbox ), about, FALSE, TRUE, 0 );
+
+  GtkWidget *vbox  = gtk_vbox_new( FALSE, 5 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox, FALSE, FALSE, 0 );
+  gtk_box_pack_start( GTK_BOX( vbox ), scrolled_window, TRUE, TRUE, 0 );
+
+  gtk_container_add( GTK_CONTAINER( window ), vbox );
+  gtk_widget_show_all( window );
+  gtk_main();
+  return 0;
+}
+
+static gboolean before_exit( GtkWindow *window, Data *data ) {
+  if ( !data->has_saved ) {
+    /* if the text has not been saved, prompt user to save it first */
+    GtkWidget *dialog_save = gtk_dialog_new_with_buttons( "Information", window,
+	GTK_DIALOG_MODAL, "Cancel", OPTION_CANCEL, "Discard", OPTION_DISCARD, "Save",
+	OPTION_SAVE, NULL );
+    gtk_dialog_set_has_separator( GTK_DIALOG( dialog_save ), TRUE );
+    GtkWidget *label_save = gtk_label_new( "The text has not been saved. Do you want to save it\n"
+	"before exiting?" );
+    GtkWidget *image_save = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+	GTK_ICON_SIZE_DIALOG );
+
+    /* organize and arrange widgets on dialog */
+    GtkWidget *hbox_save = gtk_hbox_new( FALSE, 5 );
+    gtk_container_set_border_width( GTK_CONTAINER( hbox_save ), 10 );
+    gtk_box_pack_start( GTK_BOX( hbox_save ), image_save, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( hbox_save ), label_save, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog_save)->vbox ), hbox_save, FALSE, FALSE, 10 );
+    gtk_widget_show_all( dialog_save );
+
+    /* result of running dialog according to different clicking of user */
+    /*
+     * There are two dialogs here, if user click 'Save'
+     * Dialog 1: prompt user to save the current text.
+     * 		if user click 'Cancel', dispose dialog and do nothing.
+     * 		if user click 'Discard', dispose dialog and exit program
+     * 		  without saving text.
+     * 		if user click 'Save', if there is a file name, just save it. If
+     * 		  there is no filename, poping dialog 2. This is done by calling
+     * 		  function do_save.
+     * Dialog 2: prompt user to select a file.
+     * 		if user click 'Save', we save.
+     * 		if user click 'Cancel', we dispose dialog and do nothing.
+     */
+    int result = gtk_dialog_run( GTK_DIALOG( dialog_save ) );
+    switch ( result ) {
+    case OPTION_SAVE:
+      if ( do_save( data->save, data ) ) {
+	gtk_widget_destroy( dialog_save );
+	gtk_main_quit();
+	return FALSE;
+      } else {
+	gtk_widget_destroy( dialog_save );
+	return TRUE;
+      }
+    case OPTION_DISCARD:
+      gtk_widget_destroy( dialog_save );
+      gtk_main_quit();
+      return FALSE;
+    default:
+      break;
+    }
+    gtk_widget_destroy( dialog_save );
+    return TRUE;
+  }
+  /* pop a dialog asking whether leave or not */
+  GtkWidget *dialog_exit = gtk_dialog_new_with_buttons( "Information", window,
+      GTK_DIALOG_MODAL, GTK_STOCK_NO, GTK_RESPONSE_NO, GTK_STOCK_YES, GTK_RESPONSE_YES,
+      NULL );
+  gtk_dialog_set_has_separator( GTK_DIALOG( dialog_exit ), TRUE );
+  GtkWidget *label_exit = gtk_label_new( "Do you really want to leave Super Edit?" );
+  GtkWidget *image_exit = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+      GTK_ICON_SIZE_DIALOG );
+
+  /* organize and arrange widgets on dialog */
+  GtkWidget *hbox_exit = gtk_hbox_new( FALSE, 5 );
+  gtk_container_set_border_width( GTK_CONTAINER( hbox_exit ), 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_exit ), image_exit, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_exit ), label_exit, FALSE, FALSE, 10 );
+  GtkWidget *ask_always = gtk_check_button_new_with_label( "Always ask before leaving." );
+  /*
+   * Here if you donot add ask_always on a hbox, add it on vbox directly, they
+   * look great differently.
+   * For homogenous, you'd better put all the widgets on boxes, even sometimes,
+   * there is only one widget.
+   */
+  GtkWidget *hbox_ask = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_ask ), ask_always, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog_exit)->vbox ), hbox_exit, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog_exit)->vbox ), hbox_ask, FALSE, FALSE, 10 );
+  gtk_widget_show_all( dialog_exit );
+
+  int result; /* result of running dialog according to different clicking of user */
+  result = gtk_dialog_run( GTK_DIALOG( dialog_exit ) );
+  if ( result == GTK_RESPONSE_YES ) {
+    gtk_widget_destroy( dialog_exit );
+    gtk_main_quit();
+    return TRUE;
+  }
+  gtk_widget_destroy( dialog_exit );
+  return TRUE;
+}
+
+static void exit_clicked( GtkButton *exit, Data *data ) {
+  before_exit( data->window, data );
+}
+/*
+ * copy the selected text to the clipboard and remove it from the buffer
+ * That is called cut.
+ */
+static void cut_clicked( GtkButton *cut, Data *data ) {
+  GtkClipboard *clipboard = gtk_clipboard_get( GDK_SELECTION_CLIPBOARD );
+  GtkTextBuffer *buffer = gtk_text_view_get_buffer( data->textview );
+
+  /* real implementors */
+  /* true -- cut the embedded object like image as well */
+  /* false -- count out of objects like image */
+  gtk_text_buffer_cut_clipboard( buffer, clipboard, TRUE );
+  gchar ch;
+  text_changed( data->textview, &ch, data );
+}
+
+/* copy the selected text to the clipboard */
+static void copy_clicked( GtkButton *copy, GtkTextView *textview ) {
+  GtkClipboard *clipboard = gtk_clipboard_get( GDK_SELECTION_CLIPBOARD );
+  GtkTextBuffer *buffer = gtk_text_view_get_buffer( textview );
+  gtk_text_buffer_copy_clipboard( buffer, clipboard );
+}
+
+/* paste -- insert the text from the clipboard into the text buffer */
+static void paste_clicked( GtkButton *paste, Data *data ) {
+  GtkClipboard *clipboard = gtk_clipboard_get( GDK_SELECTION_CLIPBOARD );
+  GtkTextBuffer *buffer = gtk_text_view_get_buffer( data->textview );
+
+  /* third parameter is an iterator -- position into which you specify to insert */
+  /* Null, insert into cursor. true -- rich text, false -- text only */
+  gtk_text_buffer_paste_clipboard( buffer, clipboard, NULL, TRUE );
+  gchar ch;
+  text_changed( data->textview, &ch, data );
+}
+
+/* show help references */
+static void help_clicked( GtkButton *help, Data *data ) {
+}
+
+/* Save the text */
+static void save_clicked( GtkButton *save, Data *data ) {
+  do_save( save, data );
+}
+
+/*
+ * If it is the first time to save the text, i.e. there is no filename, we pop a
+ * file chooser dialog to let user specify a filename.
+ * Then we retrieve the texts from text view and write it into file as plain
+ * text/ASCII text. We will ignore formats when saving.
+ */
+static gboolean do_save( GtkButton *save, Data *data ) {
+  if ( data->filename == NULL ) {
+    /* First time click save, we need to let uesr specify file path and name */
+    /* show a GtkFileChooserDialog */
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Save file as ...",
+	data->window, GTK_FILE_CHOOSER_ACTION_SAVE, 
+	GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+	GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT, NULL );
+    gtk_file_chooser_set_do_overwrite_confirmation( GTK_FILE_CHOOSER( dialog ), TRUE );
+    if ( gtk_dialog_run( GTK_DIALOG( dialog ) ) == GTK_RESPONSE_ACCEPT ) {
+      data->filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER( dialog ) );
+      /* We should validate the path */
+    } else {
+      data->filename = NULL;
+      /* if user does not want to save it now -- clicking 'Cancel', we let it to save later */
+      gtk_widget_destroy( dialog );
+      return FALSE;
+    }
+    gtk_widget_destroy( dialog );
+  }
+
+  /* Retrieve texts from textview */
+  /* Problems might occur when there is too many texts in text view */
+  GtkTextBuffer *text_buffer = gtk_text_view_get_buffer( data->textview );
+  GtkTextIter start, end;
+  gtk_text_buffer_get_start_iter( text_buffer, &start );
+  gtk_text_buffer_get_end_iter( text_buffer, &end );
+  gchar *buffer = gtk_text_buffer_get_text( text_buffer, &start, &end, FALSE );
+  /* write it to file */
+  FILE *fp;
+  printf( "file name is: '%s'\n", data->filename );
+  if ( (fp = fopen( data->filename, "w" )) == NULL ) {
+    fprintf( stderr, "open file %s failed: %s\n", data->filename, strerror( errno ) );
+  } else {
+    fputs( buffer, fp );
+    fclose( fp );
+  }
+  /* re-set save status */
+  data->has_saved = TRUE;
+  gtk_widget_set_sensitive( GTK_WIDGET( save ), FALSE );
+  return TRUE;
+}
+
+static void text_changed( GtkTextView *textview, gchar *ch, Data *data ) {
+  data->has_saved = FALSE;
+  gtk_widget_set_sensitive( GTK_WIDGET( data->save ), TRUE );
+}
+
+static void about_clicked( GtkButton *about, Data *data ) {
+  const gchar *authors[] = {
+    "Alex Hilton",
+    NULL,
+  };
+  const gchar *docs[] = {
+    "Alex Hilton",
+    NULL,
+  };
+  GtkWidget *dialog = gtk_about_dialog_new();
+  GError *error = NULL;
+  GdkPixbuf *logo = gdk_pixbuf_new_from_file( 
+      "/home/alex/work/gtk-work/foundation-gtk/chap05/logo.png", &error );
+
+  /* set the application logo or handle the errors */
+  if ( error == NULL ) { /* no error, set the logo */
+    gtk_about_dialog_set_logo( GTK_ABOUT_DIALOG( dialog ), logo );
+  } else {
+    if ( error->domain == GDK_PIXBUF_ERROR ) {
+      g_print( "GdkPixbufError: %s\n", error->message );
+    } else if ( error->domain == G_FILE_ERROR ) {
+      g_print( "GFileError: %s\n", error->message );
+    } else {
+      g_print( "An Error in the domain: %d has occured!\n", error->domain );
+    }
+    g_error_free( error );
+  }
+
+  /* set application data that will be displayed in the main dialog */
+  gtk_about_dialog_set_name( GTK_ABOUT_DIALOG( dialog ), "Super Edit" );
+  gtk_about_dialog_set_version( GTK_ABOUT_DIALOG( dialog ), "3.2.0.02" );
+  gtk_about_dialog_set_copyright( GTK_ABOUT_DIALOG( dialog ), "(c) 2009 Alex Hilton" );
+  gtk_about_dialog_set_comments( GTK_ABOUT_DIALOG( dialog ), "Live to change the world" );
+
+  /* set licese tex */
+  gtk_about_dialog_set_license( GTK_ABOUT_DIALOG( dialog ), "This is a free software\n"
+      "It is free and opensource.\n"
+      "You can use it, modify it\n"
+      "redistribute it without\n"
+      "any warnarry" );
+  gtk_about_dialog_set_website( GTK_ABOUT_DIALOG( dialog ), "http://book.alexhilton.net" );
+  gtk_about_dialog_set_website_label( GTK_ABOUT_DIALOG( dialog ), "book.alexhilton.net" );
+
+  /* set the application authors, docs and translators */
+  gtk_about_dialog_set_authors( GTK_ABOUT_DIALOG( dialog ), authors );
+  gtk_about_dialog_set_documenters( GTK_ABOUT_DIALOG( dialog ), docs );
+  gtk_about_dialog_set_translator_credits( GTK_ABOUT_DIALOG( dialog ), "Alex Hilton" );
+
+  gtk_dialog_run( GTK_DIALOG( dialog ) );
+  gtk_widget_destroy( dialog );
+}
+
+static gboolean window_close( GtkWindow *window, GdkEvent *event, gpointer data ) {
+  return before_exit( window, (Data *) data );
+}
+
+static void search_clicked( GtkButton *search, Data *data ) {
+  GtkWidget *dialog = gtk_dialog_new_with_buttons( "Search Text", data->window,
+      GTK_DIALOG_MODAL,
+      "Cancel", OPTION_CANCEL, "Next Match", OPTION_NEXT_MATCH, NULL );
+  /* gtk_widget_set_size_request( dialog, 400, 160 ); */
+  gtk_dialog_set_has_separator( GTK_DIALOG( dialog ), TRUE );
+  GtkWidget *label = gtk_label_new( "Pattern: " );
+  GtkWidget *entry = gtk_entry_new();
+  GtkWidget *forward = gtk_radio_button_new_with_label( NULL, "Forward" );
+  GtkWidget *backward = gtk_radio_button_new_with_label_from_widget( 
+      GTK_RADIO_BUTTON( forward ), "Backward" );
+  GtkWidget *case_sensitive = gtk_check_button_new_with_label( "Case sensitive" );
+
+  /* organize and arrange widgets on dialog */
+  GtkWidget *hbox_search = gtk_hbox_new( FALSE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_search ), label, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_search ), entry, TRUE, TRUE, 10 );
+  GtkWidget *hbox_radio = gtk_hbox_new( FALSE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_radio ), forward, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_radio ), backward, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_radio ), case_sensitive, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog)->vbox ), hbox_search, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog)->vbox ), hbox_radio, FALSE, FALSE, 10 );
+  gtk_widget_show_all( dialog );
+
+  GtkTextBuffer *buffer = gtk_text_view_get_buffer( data->textview );
+  /* result of running dialog according to different clicking of user */
+  /*
+   * Search we are gonna implement must achieve the following goals:
+   *   #1. User can enter new pattern at any time, and we are able to search the new
+   *       pattern from current position..
+   *   #2. User can change search direction at any time, and we are able to search
+   *       starting from current position.
+   *   #3. When there is no match from current position to limit(start/end), a
+   *       dialog saying 'no match' will be popped.
+   */
+  GtkTextIter start, end, start_pos;
+  gtk_text_buffer_get_start_iter( buffer, &start );
+  gtk_text_buffer_get_end_iter( buffer, &end );
+  gboolean is_forward = gtk_toggle_button_get_active( GTK_TOGGLE_BUTTON( forward ) );
+  if ( is_forward ) {
+    start_pos = start;
+  } else {
+    start_pos = end;
+  }
+  while ( 1 ) {
+    int result = gtk_dialog_run( GTK_DIALOG( dialog ) );
+    const gchar *pattern = gtk_entry_get_text( GTK_ENTRY( entry ) );
+    is_forward = gtk_toggle_button_get_active( GTK_TOGGLE_BUTTON( forward ) );
+    printf( "search direction is '%s'\n", is_forward ? "forward" : "backward" );
+    if ( result == OPTION_NEXT_MATCH ) {
+      if ( !do_search( pattern, &start_pos, is_forward ) ) {
+	no_match( GTK_WINDOW( dialog ), NULL );
+      } else {
+	printf( "got one\n" );
+      }
+    } else {
+      gtk_widget_destroy( dialog );
+      break;
+    }
+  }
+}
+
+static gboolean do_search( const gchar *pattern, GtkTextIter *start, gboolean is_forward ) {
+  GtkTextIter begin, end;
+  gboolean found;
+  if ( is_forward ) {
+    found = gtk_text_iter_forward_search( start, pattern, 0, &begin, &end, NULL );
+    *start = end;
+  } else {
+    found = gtk_text_iter_backward_search( start, pattern, 0, &begin, &end, NULL );
+    *start = begin;
+  }
+  return found;
+}
+
+static void no_match( GtkWindow *window, gpointer data ) {
+  GtkWidget *dialog = gtk_dialog_new_with_buttons( "Information", window,
+      GTK_DIALOG_MODAL, GTK_STOCK_OK, GTK_RESPONSE_OK, NULL );
+  gtk_dialog_set_has_separator( GTK_DIALOG( dialog ), TRUE );
+  GtkWidget *label = gtk_label_new( "End of text reached and no match found" );
+  GtkWidget *image = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+      GTK_ICON_SIZE_DIALOG );
+
+  /* organize and arrange widgets on dialog */
+  GtkWidget *hbox = gtk_hbox_new( FALSE, 5 );
+  gtk_container_set_border_width( GTK_CONTAINER( hbox ), 10 );
+  gtk_box_pack_start( GTK_BOX( hbox ), image, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox ), label, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog)->vbox ), hbox, FALSE, FALSE, 10 );
+  gtk_widget_show_all( dialog );
+
+  gtk_dialog_run( GTK_DIALOG( dialog ) );
+  gtk_widget_destroy( dialog );
+}
+
+static void open_clicked( GtkButton *button_open, Data *data ) {
+  if ( !data->has_saved ) {
+    /* if the text has not been saved, prompt user to save it first */
+    GtkWidget *dialog_save = gtk_dialog_new_with_buttons( "Information", data->window,
+	GTK_DIALOG_MODAL, "Cancel", OPTION_CANCEL, "Discard", OPTION_DISCARD, "Save",
+	OPTION_SAVE, NULL );
+    gtk_dialog_set_has_separator( GTK_DIALOG( dialog_save ), TRUE );
+    GtkWidget *label_save = gtk_label_new( "The text has not been saved. Do you want to save it" );
+    GtkWidget *image_save = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+	GTK_ICON_SIZE_DIALOG );
+
+    /* organize and arrange widgets on dialog */
+    GtkWidget *hbox_save = gtk_hbox_new( FALSE, 5 );
+    gtk_container_set_border_width( GTK_CONTAINER( hbox_save ), 10 );
+    gtk_box_pack_start( GTK_BOX( hbox_save ), image_save, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( hbox_save ), label_save, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog_save)->vbox ), hbox_save, FALSE, FALSE, 10 );
+    gtk_widget_show_all( dialog_save );
+
+    /* result of running dialog according to different clicking of user */
+    int result = gtk_dialog_run( GTK_DIALOG( dialog_save ) );
+    switch ( result ) {
+    case OPTION_SAVE:
+      /*
+       * If user click cancel on file chooser dialog, we should cancel saving
+       * don't save and don't open new file
+       */
+      if ( !do_save( data->save, data ) ) {
+	gtk_widget_destroy( dialog_save );
+	return;
+      }
+      break;
+    case OPTION_DISCARD:
+      break;
+    case OPTION_CANCEL:
+      /* User change his mind, he click cancel to give up opening new file */
+      gtk_widget_destroy( dialog_save );
+      return;
+    default:
+      break;
+    }
+    gtk_widget_destroy( dialog_save );
+  }
+  /* show a GtkFileChooserDialog prompt user to open a new file */
+  GtkWidget *dialog = gtk_file_chooser_dialog_new( "Open file",
+      data->window, GTK_FILE_CHOOSER_ACTION_OPEN, 
+      GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+      GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL );
+  if ( gtk_dialog_run( GTK_DIALOG( dialog ) ) == GTK_RESPONSE_ACCEPT ) {
+    data->filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER( dialog ) );
+    gtk_widget_destroy( dialog );
+  } else {
+    /* if user does not want to open it now, we let it to open later */
+    gtk_widget_destroy( dialog );
+    return;
+  }
+
+  /* Load the contents of the file inot text view */
+  int fd;
+  gchar buffer[ BUFSIZ ];
+  if ( (fd = open( data->filename, O_RDONLY )) < 0 ) {
+    fprintf( stderr, "open file %s failed: %s\n", data->filename, strerror( errno ) );
+  } else {
+    /* TODO: it might not read the whole contents at a time */
+    int n = read( fd, buffer, sizeof( buffer ) );
+    buffer[ n ] = '\0';
+    close( fd );
+  }
+  GtkTextBuffer *text_buffer = gtk_text_view_get_buffer( data->textview );
+  GtkTextIter start, end;
+  gtk_text_buffer_get_start_iter( text_buffer, &start );
+  gtk_text_buffer_get_end_iter( text_buffer, &end );
+  gtk_text_buffer_set_text( text_buffer, buffer, -1 );
+  data->has_saved = TRUE;
+  gtk_widget_set_sensitive( GTK_WIDGET( data->save ), FALSE );
+}
+
+static void new_clicked( GtkButton *new, Data *data ) {
+  if ( !data->has_saved ) {
+    /* if the text has not been saved, prompt user to save it first */
+    GtkWidget *dialog_save = gtk_dialog_new_with_buttons( "Information", data->window,
+	GTK_DIALOG_MODAL, "Cancel", OPTION_CANCEL, "Discard", OPTION_DISCARD, "Save",
+	OPTION_SAVE, NULL );
+    gtk_dialog_set_has_separator( GTK_DIALOG( dialog_save ), TRUE );
+    GtkWidget *label_save = gtk_label_new( "The text has not been saved. Do you want to save it" );
+    GtkWidget *image_save = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+	GTK_ICON_SIZE_DIALOG );
+
+    /* organize and arrange widgets on dialog */
+    GtkWidget *hbox_save = gtk_hbox_new( FALSE, 5 );
+    gtk_container_set_border_width( GTK_CONTAINER( hbox_save ), 10 );
+    gtk_box_pack_start( GTK_BOX( hbox_save ), image_save, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( hbox_save ), label_save, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog_save)->vbox ), hbox_save, FALSE, FALSE, 10 );
+    gtk_widget_show_all( dialog_save );
+
+    /* result of running dialog according to different clicking of user */
+    int result = gtk_dialog_run( GTK_DIALOG( dialog_save ) );
+    switch ( result ) {
+    case OPTION_SAVE:
+      if ( !do_save( data->save, data ) ) {
+	gtk_widget_destroy( dialog_save );
+	return;
+      }
+      break;
+    case OPTION_DISCARD:
+      break;
+    case OPTION_CANCEL:
+      /* user change his mind, do not new a file */
+      gtk_widget_destroy( dialog_save );
+      return;
+    default:
+      break;
+    }
+    gtk_widget_destroy( dialog_save );
+  }
+  /* re-initialize save status, and text view */
+  data->filename = NULL;
+  GtkTextBuffer *buffer = gtk_text_view_get_buffer( data->textview );
+  gtk_text_buffer_set_text( buffer, "", -1 );
+  gtk_widget_set_sensitive( GTK_WIDGET( data->save ), FALSE );
+  data->has_saved = TRUE;
+}
+
+/* End of $Source: /home/alex/work/gtk-work/foundation-gtk/chap07/editor.c,v $ */
+@
+
+
+1.3
+log
+@Open and save added.
+new need some efforts.
+open, save, new and search need more efforts to be perfect.
+@
+text
+@d2 1
+a2 1
+ * $Header: /home/alex/work/gtk-work/foundation-gtk/chap07/editor.c,v 1.2 2009/10/20 01:44:08 alex Exp alex $
+d4 2
+a5 2
+ * $Date: 2009/10/20 01:44:08 $
+ * RCS_ID: $Id: editor.c,v 1.2 2009/10/20 01:44:08 alex Exp alex $
+d11 1
+a11 1
+ * $Revision: 1.2 $
+d13 5
+d35 1
+d37 5
+a41 5
+  GtkWindow *window;
+  GtkButton *save;
+  GtkTextView *textview;
+  gboolean has_saved;
+  const gchar *filename;
+d48 7
+d61 6
+d68 6
+d75 5
+d81 3
+d86 5
+d99 7
+d108 1
+d110 1
+d116 1
+a116 1
+  /* GtkWidget *exit = gtk_button_new_with_mnemonic( "E_xit" ); */
+a126 1
+  /* About should be a dialog, we use button as an option, we change it later */
+d129 1
+a129 1
+  /* text view and scrolled window */
+d135 1
+a135 1
+  gtk_container_set_border_width( GTK_CONTAINER( scrolled_window ), 10 );
+d137 4
+a140 1
+  /* set more properties */
+d151 2
+a152 2
+  gtk_text_view_set_pixels_above_lines( GTK_TEXT_VIEW( textview ), 5 );
+  gtk_text_view_set_pixels_below_lines( GTK_TEXT_VIEW( textview ), 5 );
+d154 2
+a155 2
+  gtk_text_view_set_left_margin( GTK_TEXT_VIEW( textview ), 10 );
+  gtk_text_view_set_right_margin( GTK_TEXT_VIEW( textview ), 10 );
+d157 1
+d235 13
+d251 8
+a258 3
+      save_clicked( data->save, data );
+      gtk_main_quit();
+      return FALSE;
+d260 1
+d269 1
+a269 1
+  /* show a dialog */
+d299 1
+d351 10
+d363 1
+a363 1
+    /* show a gtkfiledialog */
+d369 8
+a376 12
+    while ( 1 ) {
+      if ( gtk_dialog_run( GTK_DIALOG( dialog ) ) == GTK_RESPONSE_ACCEPT ) {
+	data->filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER( dialog ) );
+	if ( strlen( data->filename ) > 0 ) {
+	  /* it is a valid path name */
+	  break;
+	}
+      } else {
+	data->filename = NULL;
+	/* if user does not want to save it now, we let it to save later */
+	return;
+      }
+d381 2
+d388 1
+d397 1
+a397 1
+  /* write buffer to file */
+d400 1
+d491 9
+d561 1
+a561 16
+  if ( data->has_saved ) {
+    /* First time click save, we need to let uesr specify file path and name */
+    /* show a gtkfiledialog */
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( "Open file",
+	data->window, GTK_FILE_CHOOSER_ACTION_OPEN, 
+	GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+	GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL );
+    if ( gtk_dialog_run( GTK_DIALOG( dialog ) ) == GTK_RESPONSE_ACCEPT ) {
+      data->filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER( dialog ) );
+      gtk_widget_destroy( dialog );
+    } else {
+      /* if user does not want to open it now, we let it to open later */
+      gtk_widget_destroy( dialog );
+      return;
+    }
+  } else {
+d583 8
+a590 1
+      save_clicked( data->save, data );
+d594 4
+d603 13
+d617 1
+d638 1
+a638 3
+  if ( data->has_saved ) {
+    /* re-initialize all the things */
+  } else {
+d660 4
+a663 1
+      save_clicked( data->save, data );
+d667 4
+d676 6
+@
+
+
+1.2
+log
+@Search feature added.
+There are 'save', 'open' and 'new' to be implemented.
+'search' is not perfect, needing more work.
+@
+text
+@d2 1
+a2 1
+ * $Header: /home/alex/work/gtk-work/foundation-gtk/chap07/editor.c,v 1.1 2009/10/19 02:03:01 alex Exp alex $
+d4 2
+a5 2
+ * $Date: 2009/10/19 02:03:01 $
+ * RCS_ID: $Id: editor.c,v 1.1 2009/10/19 02:03:01 alex Exp alex $
+d11 1
+a11 1
+ * $Revision: 1.1 $
+d13 5
+d24 5
+d35 1
+a42 1
+static gboolean has_save( GtkWindow *window, Data *data, void (*func)() );
+d49 2
+d113 1
+d136 4
+d166 33
+a198 1
+    return has_save( window, data, gtk_main_quit );
+d281 38
+a383 43
+static gboolean has_save( GtkWindow *window, Data *data, void (*func)() ) {
+  /* 
+   * If the text has not been saved, we show a save dialog. If has been saved
+   * we show quit or not dialog
+   */
+  /* prompt use to save the text */
+  GtkWidget *dialog_save = gtk_dialog_new_with_buttons( "Information", window,
+      GTK_DIALOG_MODAL, "Cancel", OPTION_CANCEL, "Discard", OPTION_DISCARD, "Save",
+      OPTION_SAVE, NULL );
+  gtk_dialog_set_has_separator( GTK_DIALOG( dialog_save ), TRUE );
+  GtkWidget *label_save = gtk_label_new( "The text has not been saved. Do you want to save it\n"
+      "before exiting?" );
+  GtkWidget *image_save = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+      GTK_ICON_SIZE_DIALOG );
+
+  /* organize and arrange widgets on dialog */
+  GtkWidget *hbox_save = gtk_hbox_new( FALSE, 5 );
+  gtk_container_set_border_width( GTK_CONTAINER( hbox_save ), 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_save ), image_save, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_save ), label_save, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog_save)->vbox ), hbox_save, FALSE, FALSE, 10 );
+  gtk_widget_show_all( dialog_save );
+
+  /* result of running dialog according to different clicking of user */
+  gboolean ret = TRUE;
+  int result = gtk_dialog_run( GTK_DIALOG( dialog_save ) );
+  switch ( result ) {
+  case OPTION_SAVE:
+    save_clicked( data->save, data );
+    (*func)();
+    ret = FALSE;
+    break;
+  case OPTION_DISCARD:
+    ret = FALSE;
+    (*func)();
+    break;
+  default:
+    break;
+  }
+  gtk_widget_destroy( dialog_save );
+  return ret;
+}
+
+d471 103
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 4
+a5 4
+ * $Header$
+ * $Author$
+ * $Date$
+ * RCS_ID: $Id$
+d11 5
+a15 2
+ * $Revision$
+ * $Log$
+d18 1
+d28 2
+a29 1
+enum { OPTION_CANCEL = 0x00, OPTION_DISCARD = 0x01, OPTION_SAVE = 0x02 };
+d32 1
+d41 3
+d79 17
+d121 2
+a147 4
+  /* 
+   * If the text has not been saved, we show a save dialog. If has been saved
+   * we show quit or not dialog
+   */
+d149 1
+a149 36
+    /* prompt use to save the text */
+    GtkWidget *dialog_save = gtk_dialog_new_with_buttons( "Information", window,
+	GTK_DIALOG_MODAL, "Cancel", OPTION_CANCEL, "Discard", OPTION_DISCARD, "Save",
+	OPTION_SAVE, NULL );
+    gtk_dialog_set_has_separator( GTK_DIALOG( dialog_save ), TRUE );
+    GtkWidget *label_save = gtk_label_new( "The text has not been saved. Do you want to save it\n"
+	"before exiting?" );
+    GtkWidget *image_save = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+	GTK_ICON_SIZE_DIALOG );
+
+    /* organize and arrange widgets on dialog */
+    GtkWidget *hbox_save = gtk_hbox_new( FALSE, 5 );
+    gtk_container_set_border_width( GTK_CONTAINER( hbox_save ), 10 );
+    gtk_box_pack_start( GTK_BOX( hbox_save ), image_save, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( hbox_save ), label_save, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog_save)->vbox ), hbox_save, FALSE, FALSE, 10 );
+    gtk_widget_show_all( dialog_save );
+
+    /* result of running dialog according to different clicking of user */
+    gboolean ret = TRUE;
+    int result = gtk_dialog_run( GTK_DIALOG( dialog_save ) );
+    switch ( result ) {
+    case OPTION_SAVE:
+      save_clicked( data->save, data );
+      gtk_main_quit();
+      ret = FALSE;
+      break;
+    case OPTION_DISCARD:
+      ret = FALSE;
+      gtk_main_quit();
+      break;
+    default:
+      break;
+    }
+    gtk_widget_destroy( dialog_save );
+    return ret;
+d297 131
+a427 1
+/* End of $Source$ */
+@

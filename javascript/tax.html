@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Tax calculator</title>
+        <style>
+            .right {text-align: right}
+        </style>
+        <script type="text/javascript">
+            function calculateIncome() {
+                var salaryField = document.getElementsByName("salary")[0];
+                var digitsRegex = /\d{1,9}/g;
+                if (!digitsRegex.exec(salaryField.value)) {
+                    alert("Salary must be digits, please reenter");
+                    salaryField.value = "";
+                    return;
+                }
+                var insRateField = document.getElementsByName("insurance_rate")[0];
+                var rateRegex = /\d{1,3}%/g;
+                if (!rateRegex.exec(insRateField.value)) {
+                    alert("Insurance rate must be percentage form!");
+                    insRateField.value = "";
+                    return;
+                }
+                var housingRateField = document.getElementsByName("housing_rate")[0];
+                rateRegex = /\d{1,3}%/g;
+                if (!rateRegex.exec(housingRateField.value)) {
+                    alert("Housing fund rate must be percentage form");
+                    housingRateField.value = "";
+                    return;
+                }
+                var diseaseField = document.getElementsByName("disease")[0];
+                if (!diseaseField.value) {
+                    diseaseFiled.value = "10";
+                }
+                var disease = diseaseField.value;
+                var insuranceField = document.getElementsByName("insurance")[0];
+                var housingField = document.getElementsByName("housing")[0];
+                var salary = salaryField.value;
+                var insuranceRate = insRateField.value.substring(0, insRateField.value.length-1) / 100;
+                var housingRate = housingRateField.value.substring(0, housingRateField.value.length-1) / 100;
+                if (!insuranceField.value) {
+                    insuranceField.value = salary * insuranceRate;
+                }
+                if (!housingField.value) {
+                    housingField.value = salary * housingRate;
+                }
+                var taxBase = salary - insuranceField.value - housingField.value - disease;
+                console.log("tax base is " + taxBase);
+                var toTax = taxBase - 3500;
+                var tax = 0;
+                if (toTax <= 1500) {
+                    tax = toTax * 0.03;
+                } else if (toTax <= 4500) {
+                    tax = toTax * 0.1 - 105;
+                } else if (toTax <= 9000) {
+                    tax = toTax * 0.2 - 555;
+                } else if (toTax <= 35000) {
+                    tax = toTax * 0.25 - 1005;
+                } else if (toTax <= 55000) {
+                    tax = toTax * 0.3 - 2755;
+                } else if (toTax <= 80000) {
+                    tax = toTax * 0.35 - 5505;
+                } else {
+                    tax = toTax * 45 - 13505;
+                }
+                var taxField = document.getElementsByName("tax")[0];
+                taxField.value = tax;
+                var actualField = document.getElementsByName("actual_income")[0];
+                actualField.value = taxBase - tax;
+            }
+        </script>
+    </head>
+    <body>
+        <form>
+            <table>
+                <tr>
+                    <td class="right">Salary:</td>
+                    <td><input class="right" type="text" name="salary" value="10000"/></td>
+                    <td class="right">Big Disease:</td>
+                    <td><input class="right" type="text" name="disease" value="10"/></td>
+                </tr>
+                <tr>
+                    <td class="right">Insurance rate:</td>
+                    <td><input class="right" type="text" name="insurance_rate" value="10%"/></td>
+                    <td class="right">Insurance:</td>
+                    <td><input class="right" type="text" name="insurance" value="496.1" /></td>
+                </tr>
+                <tr>
+                    <td class="right">Housing fund rate:</td>
+                    <td><input class="right" type="text" name="housing_rate" value="12%" /></td>
+                    <td class="right">Housing fund:</td>
+                    <td><input class="right" type="text" name="housing" value="492" /></td>
+                </tr>
+                <tr>
+                    <td class="right">Actual income:</td>
+                    <td><input class="right" type="text" name="actual_income" /></td>
+                    <td class="right">Tax:</td>
+                    <td><input class="right" type="text" name="tax" /></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="right"><input style="width:100%" type="button" name="calculate" value="Calculate" onclick="calculateIncome()"/></td>
+                </tr>
+            </table>
+        </form>
+    </body>
+</html>

@@ -1,0 +1,8 @@
+cat:
+	Concatenate files and output them to standard output
+options:
+	-h or --help
+		show this help and exit
+	-v or --version 
+		show version, copyright information and exit
+	- stands for standard input

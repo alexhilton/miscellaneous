@@ -1,0 +1,127 @@
+./stock
+
+******* Gainers in descending order: 
+*** COHU
+	% Changed:     5.17382
+	Opening Price: 48.9
+	Closing Price: 51.43
+	Volume:        134900
+*** ALCD
+	% Changed:     2.46607
+	Opening Price: 60.42
+	Closing Price: 61.91
+	Volume:        230000
+*** GMGC
+	% Changed:     1.81159
+	Opening Price: 2.76
+	Closing Price: 2.81
+	Volume:        129400
+*** MSFT
+	% Changed:     1.55296
+	Opening Price: 135.87
+	Closing Price: 137.98
+	Volume:        8301700
+*** ZTEC
+	% Changed:     -0.784016
+	Opening Price: 39.54
+	Closing Price: 39.23
+	Volume:        100300
+*** BUTI
+	% Changed:     -13.8286
+	Opening Price: 8.75
+	Closing Price: 7.54
+	Volume:        159000
+*** TMXI
+	% Changed:     -15.8358
+	Opening Price: 3.41
+	Closing Price: 2.87
+	Volume:        255000
+*** EPEX
+	% Changed:     -17.3342
+	Opening Price: 15.98
+	Closing Price: 13.21
+	Volume:        54000
+
+******* Losers in ascending order: 
+*** EPEX
+	% Changed:     -17.3342
+	Opening Price: 15.98
+	Closing Price: 13.21
+	Volume:        54000
+*** TMXI
+	% Changed:     -15.8358
+	Opening Price: 3.41
+	Closing Price: 2.87
+	Volume:        255000
+*** BUTI
+	% Changed:     -13.8286
+	Opening Price: 8.75
+	Closing Price: 7.54
+	Volume:        159000
+*** ZTEC
+	% Changed:     -0.784016
+	Opening Price: 39.54
+	Closing Price: 39.23
+	Volume:        100300
+*** MSFT
+	% Changed:     1.55296
+	Opening Price: 135.87
+	Closing Price: 137.98
+	Volume:        8301700
+*** GMGC
+	% Changed:     1.81159
+	Opening Price: 2.76
+	Closing Price: 2.81
+	Volume:        129400
+*** ALCD
+	% Changed:     2.46607
+	Opening Price: 60.42
+	Closing Price: 61.91
+	Volume:        230000
+*** COHU
+	% Changed:     5.17382
+	Opening Price: 48.9
+	Closing Price: 51.43
+	Volume:        134900
+
+******* Volume in descending order: 
+*** MSFT
+	Volume:        8301700
+	% Changed:     1.55296
+	Opening Price: 135.87
+	Closing Price: 137.98
+*** TMXI
+	Volume:        255000
+	% Changed:     -15.8358
+	Opening Price: 3.41
+	Closing Price: 2.87
+*** ALCD
+	Volume:        230000
+	% Changed:     2.46607
+	Opening Price: 60.42
+	Closing Price: 61.91
+*** BUTI
+	Volume:        159000
+	% Changed:     -13.8286
+	Opening Price: 8.75
+	Closing Price: 7.54
+*** COHU
+	Volume:        134900
+	% Changed:     5.17382
+	Opening Price: 48.9
+	Closing Price: 51.43
+*** GMGC
+	Volume:        129400
+	% Changed:     1.81159
+	Opening Price: 2.76
+	Closing Price: 2.81
+*** ZTEC
+	Volume:        100300
+	% Changed:     -0.784016
+	Opening Price: 39.54
+	Closing Price: 39.23
+*** EPEX
+	Volume:        54000
+	% Changed:     -17.3342
+	Opening Price: 15.98
+	Closing Price: 13.21

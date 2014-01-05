@@ -1,0 +1,166 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	2010.02.08.02.19.39;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@The ball flying on the screwing curve.
+The curve is perfect.
+The ball is perfect, so far.
+It does not look like 3D, not 3D enough, on which needs us to work.
+The drawing curve and erasing curve should be repeatible, that's more fun.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/*
+ * $Header$
+ * $Author$
+ * $Date$
+ * RCS Id: $Id$
+ * $Revision$
+ * $Log$
+ * A simple animation simulates a ball flying on the screw curve with both
+ * radius of ball and screw incrementing by some predefined steps.
+ */
+#include <GL/glut.h>
+#include <math.h>
+#include <stdlib.h>
+
+#define PI 3.1415927f
+#define ESC 27
+
+typedef struct {
+  double x, y, z;
+} Point;
+
+static Point curve[ 1000 ];
+static int length = 0;
+static unsigned int pause = 66; /* re-draw the scene every pause ms  */
+static double radius = 1.0f; /* the radius of the screw curve */
+static double theta = 0.0f; /* the angle between current position and x-axis on screw */
+static double x0 = 0.0f;
+static double y0 = 0.0f;
+static double z0 = 0.0f;
+static double radius_step = 0.5f;
+static double theta_step = PI / 24.0f;
+
+void display( void );
+void init( void );
+void reshape( int w, int h );
+void keyboard( unsigned char key, int x, int y );
+void timer( int value );
+
+int main( int argc, char **argv ) {
+  glutInit( &argc, argv );
+  glutInitDisplayMode( GLUT_SINGLE | GLUT_RGB );
+  glutInitWindowSize( 480, 480 );
+  glutInitWindowPosition( 100, 100 );
+  glutCreateWindow( "Screwing Ball" );
+  init();
+  glutDisplayFunc( display );
+  glutReshapeFunc( reshape );
+  glutKeyboardFunc( keyboard );
+  glutTimerFunc( pause, timer, 0 );
+
+  glutMainLoop();
+  return 0;
+}
+
+/*
+ * The way we draw the ball should be changed. We should draw a real sphere.
+ */
+void display( void ) {
+  /* These two arrays are for polygon stipple. */
+  glClear( GL_COLOR_BUFFER_BIT );
+
+  glColor3f( 0.0f, 0.0f, 1.0f );
+
+  int i;
+  glLineWidth( 2.0f );
+  glBegin( GL_LINE_STRIP );
+    for ( i = 0; i < length; i++ ) { 
+      glVertex3f( curve[i].x, curve[i].y, curve[i].z );
+    }
+  glEnd();
+  i--;
+
+  double r = 1.0f;
+  double alpha;
+  glColor3f( 1.0f, 0.0f, 0.0f );
+  glBegin( GL_POLYGON );
+    for ( alpha = 0.0f; alpha <= 2*PI; alpha += PI/12.0f ) {
+      glVertex3f( curve[i].x+r*cos(alpha), curve[i].y+r*sin(alpha), 
+	  curve[i].z);
+    }
+  glEnd();
+
+  glFlush();
+}
+
+void timer( int value ) {
+  radius += radius_step;
+  theta += theta_step;
+  pause++;
+  x0 = radius * cos( theta );
+  z0 = theta;
+  y0 = radius * sin( theta );
+  if ( radius >= 100.0f ) {
+    pause--;
+    length--;
+    if ( length <= 0 ) {
+      return;
+    }
+  } else {
+    curve[ length ].x = x0;
+    curve[ length ].y = y0;
+    curve[ length ].z = z0;
+    length++;
+  }
+  glutPostRedisplay();
+  glutTimerFunc( pause, timer, 0 );
+}
+
+void init( void ) {
+  glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+  glShadeModel( GL_FLAT );
+}
+
+void keyboard( unsigned char key, int x, int y ) {
+  /* Press 'Escape' to quit */
+  if ( key == ESC ) {
+    exit( EXIT_SUCCESS );
+  }
+}
+
+void reshape( int width, int height ) {
+  GLfloat range = 100.0f;
+  if ( height == 0 ) {
+    height = 1;
+  }
+  glViewport( 0, 0, (GLsizei) width, (GLsizei) height );
+  glMatrixMode( GL_PROJECTION );
+  glLoadIdentity();
+  if ( width <= height ) {
+    glOrtho( -range, range, -range*height/width, range*height/width, -range, range );
+  } else {
+    glOrtho( -range*width/height, range*width/height, -range, range, -range, range );
+  }
+  glMatrixMode( GL_MODELVIEW );
+  glLoadIdentity();
+}
+
+/* End of $Source$ */
+@

@@ -1,0 +1,5 @@
+#!/usr/bin/perl
+print "Hello world of Perl!\n";
+
+use 5.010;
+say "Hello, from say!\n";

@@ -1,0 +1,158 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	2010.01.24.05.13.58;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@It works all right.
+We need to improve user interaction and make it able to set arguments like horse number and track length.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/*
+ * $Header$
+ * $Author$
+ * $Date$
+ * RCS id: $Id$
+ * A simulation to horse race
+ * We use ten thread to simulate ten race horses and a thread to be the game.
+ * The main thread is responsible for setting arguments.
+ * $Revision$
+ * $Log$
+ */
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
+
+#define FINISH_LINE 70
+#define STEP (rand() % 3)
+#define HORSE_NUM 7
+#define HEADER 11
+#define TRACK_LENGTH (FINISH_LINE+HEADER+2)
+#define TRACK_WIDTH (HORSE_NUM+2)
+
+static char track[ TRACK_WIDTH ][ TRACK_LENGTH ];
+/*static int over = 0;
+static pthread_mutex_t over_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t over_cond = PTHREAD_COND_INITIALIZER;*/
+
+static void  *race( void *d );
+static void refreshTrack();
+static void printTrack();
+
+/* Launch program, build gui */
+int main( int argc, char **argv ) {
+  char ch;
+  int score = 0;
+  int guess;
+  int result;
+  while ( 1 ) {
+    printf( "Make a guess:" );
+    fflush( stdin );
+    scanf( "%d", &guess );
+    pthread_t id;
+    pthread_create( &id, NULL, race, NULL );
+    /* we have a better solution join */
+    /*pthread_mutex_lock( &over_lock );
+    while ( !over ) {
+      pthread_cond_wait( &over_cond, &over_lock );
+    }
+    pthread_mutex_unlock( &over_lock ); */
+    pthread_join( id, (void *) &result );
+    if ( guess == result ) {
+      score += 2000;
+      printf( "Congratulations! your horse has won!\nyou won $2000\n" );
+    } else {
+      printf( "Sorry, your horse has lost!\n" );
+    }
+    printf( "One more time(y/n):[y]" );
+    fflush( stdout );
+    fflush( stdin );
+    ch = getchar();
+    ch = getchar();
+    if ( ch == 'n' ) {
+      break;
+    }
+  }
+  printf( "You won totally $%d\n", score );
+  return 0;
+}
+
+/*
+ * race
+ * The central idea is increment each horse's track by a random step for each
+ * horse until one of them reaches the finishing line --- the winner of this
+ * race.
+ * To reach simulation, we clear the track, then mark the position, then print
+ * the whole track. This is a series refreshing, incrementing and printing, so
+ * you would see horses are running.
+ */
+static void *race( void *d ) {
+  int id;
+  int progress[ HORSE_NUM ];
+  memset( progress, 0, sizeof( progress ) );
+  while ( 1 ) {
+    refreshTrack();
+
+    /* Making increments */
+    for ( id = 0; id < HORSE_NUM; id++ ) {
+      progress[ id ] += STEP;
+      /* mark where we are */
+      track[ id+1 ][ progress[id]+HEADER ] = '*';
+      if ( progress[ id ] >= FINISH_LINE ) {
+	/* Show a dialog */
+	printf( "Horse #%02d has won!\n", id+1 );
+	/*over = 1;
+	pthread_mutex_lock( &over_lock );
+	pthread_cond_signal( &over_cond );
+	pthread_mutex_unlock( &over_lock );*/
+	return (void *) 0;
+      }
+    }
+
+    printTrack();
+    sleep( 1 );
+  }
+  return (void *) -1;
+}
+
+static void refreshTrack() {
+  memset( track[0], '=', TRACK_LENGTH );
+  track[ 0 ][ TRACK_LENGTH-1 ] = '\n';
+  int i;
+  for ( i = 1; i <= HORSE_NUM; i++ ) {
+    sprintf( track[i], "|Horse #%02d:", i );
+    memset( track[i]+11, ' ', TRACK_LENGTH );
+    track[ i ][ TRACK_LENGTH-2 ] = '|';
+    track[ i ][ TRACK_LENGTH-1 ] = '\n';
+  }
+  memset( track[ HORSE_NUM+1 ], '=', TRACK_LENGTH );
+  track[ i ] [ TRACK_LENGTH-1 ] = '\0';
+}
+
+static void printTrack() {
+  char track_text[ TRACK_WIDTH * TRACK_LENGTH + 1 ];
+  int i;
+  for ( i = 0; i < TRACK_WIDTH; i++ ) {
+    strncpy( track_text+(i*TRACK_LENGTH), track[i], TRACK_LENGTH );
+  }
+  /* track_text[ (i-1) * TRACK_LENGTH ] = '\0'; */
+  printf( "%s\n", track_text );
+}
+/* End of $Source$ */
+@

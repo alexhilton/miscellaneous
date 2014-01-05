@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+    <title>HTML 5 -- Dice game</title>
+    <head>
+        <script type="text/javascript">
+            var radius = 5;
+            var dices = [drawOne, drawTwo, drawThree, drawFour, drawFive, drawSix];
+            var width = 220;
+            var height = 100;
+            var point = 0;
+            var msgWin = "You win! Congratulations!";
+            var msgLose = "I am sorry, you lose! please try again";
+            var msgFollow = "Not end yet, please follow-up";
+            var stageThrow = "Throw dice";
+            var stageFollowup = "Follow up";
+            var bankRoll = 100;
+            var reward = 20;
+            var cost = 10;
+            var lineWidth = 4;
+            var diceWidth = 100;
+
+            function initialize() {
+                var canvas = document.getElementById("dice");
+                width = canvas.width;
+                height = canvas.height;
+            }
+
+            function drawOne(ctx, dx) {
+                drawPoint(ctx, dx + 50, 50);
+            }
+
+            function drawTwo(ctx, dx) {
+                drawPoint(ctx, dx + 30, 30);
+                drawPoint(ctx, dx + 70, 70);
+            }
+
+            function drawThree(ctx, dx) {
+                drawPoint(ctx, dx + 30, 30);
+                drawPoint(ctx, dx + 50, 50);
+                drawPoint(ctx, dx + 70, 70);
+            }
+
+            function drawFour(ctx, dx) {
+                drawPoint(ctx, dx + 30, 30);
+                drawPoint(ctx, dx + 70, 30);
+                drawPoint(ctx, dx + 30, 70);
+                drawPoint(ctx, dx + 70, 70);
+            }
+
+            function drawFive(ctx, dx) {
+                drawPoint(ctx, dx + 30, 30);
+                drawPoint(ctx, dx + 70, 30);
+                drawPoint(ctx, dx + 50, 50);
+                drawPoint(ctx, dx + 30, 70);
+                drawPoint(ctx, dx + 70, 70);
+            }
+
+            function drawSix(ctx, dx) {
+                drawPoint(ctx, dx + 30, 20);
+                drawPoint(ctx, dx + 70, 20);
+                drawPoint(ctx, dx + 30, 50);
+                drawPoint(ctx, dx + 70, 50);
+                drawPoint(ctx, dx + 30, 80);
+                drawPoint(ctx, dx + 70, 80);
+            }
+
+            function drawBorders(ctx) {
+                // first border
+                ctx.beginPath();
+                ctx.lineWidth = lineWidth;
+                ctx.strokeRect(lineWidth/2, lineWidth/2, diceWidth-lineWidth, diceWidth-lineWidth); // remmeber to give space to border width 3
+                ctx.closePath();
+                ctx.stroke();
+                
+                // second border
+                ctx.beginPath();
+                ctx.lineWidth = lineWidth;
+                ctx.strokeRect(width-diceWidth+lineWidth/2, lineWidth/2, diceWidth-lineWidth, diceWidth-lineWidth);
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            function drawPoint(ctx, x, y) {
+                ctx.beginPath(); // important to begin path and close path, otherwise clearRect won't work
+                ctx.fillStyle = "#f00";
+                ctx.arc(x, y, radius, 0, 2*Math.PI, false);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            function getDice() {
+                return 1 + Math.floor(Math.random() * 6);
+            }
+
+            function throwDices() {
+                while (bankRoll < 10) {
+                    // not enough money ask a charge.
+                    var charge = prompt("Not enough money, charge now?");
+                    // TODO: make more error check here for user input
+                    if (charge) {
+                        bankRoll += charge.valueOf();
+                    }
+                }
+                bankRoll -= cost;
+                var num1 = getDice();
+                var num2 = getDice();
+                if (num1 < 0 || num2 > 6) {
+                    throw new RangeError("dice must be [1~6], but was " + num1);
+                }
+                if (num2 < 0 || num2 > 6) {
+                    throw new RangeError("dice must be [1~6], but was " + num2);
+                }
+                var ctx = document.getElementById("dice").getContext("2d");
+                ctx.clearRect(0, 0, width, height);
+                drawBorders(ctx);
+                dices[num1-1](ctx, 0);
+                dices[num2-1](ctx, 115);
+                var sum = num1 + num2;
+                var stageElement = document.getElementById("stage");
+                var outcomeElement = document.getElementById("outcome");
+                var pointElement = document.getElementById("point");
+                var bankRollElement = document.getElementById("bankRoll");
+                var msg;
+                var stage;
+                if (point == 0) {
+                    // fresh start
+                    if (sum == 7 || sum == 11) {
+                        point = 0;
+                        msg = msgWin;
+                        stage = stageThrow;
+                        bankRoll += reward;
+                    } else if (sum == 2 || sum == 3 || sum == 12) {
+                        point = 0;
+                        msg = msgLose;
+                        stage = stageThrow;
+                    } else {
+                        point = sum;
+                        msg = msgFollow;
+                        stage = stageFollowup;
+                    }
+                } else {
+                    // follow-up throw
+                    if (sum == 7) {
+                        point = 0;
+                        msg = msgLose;
+                        stage = stageThrow;
+                    } else if (sum == point) {
+                        point = 0;
+                        msg = msgWin;
+                        stage = stageThrow;
+                        bankRoll += reward;
+                    } else {
+                        msg = msgFollow;
+                        stage = stageFollowup;
+                    }
+                }
+                pointElement.innerHTML = "Point: " + (point == 0 ? "" : point);
+                outcomeElement.innerHTML = "Outcome: " + msg;
+                stageElement.innerHTML = "Stage: " + stage;
+                bankRollElement.innerHTML = "Bank roll: " + bankRoll;
+            }
+        </script>
+    </head>
+    <body onload="initialize();">
+        <canvas id="dice" width="220" height="100">Your browser doesn't support the HTML 5 element canvas. </canvas>
+        <div>
+            <button onclick="throwDices();">Throw dices</button>
+            <p id="stage">Stage:</p>
+            <p id="point">Ponit:</p>
+            <p id="outcome">Outcome:</p>
+            <p id="bankRoll">Bank roll: 100</p>
+        </div>
+    </body>
+</html>

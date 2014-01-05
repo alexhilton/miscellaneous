@@ -1,0 +1,129 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	2010.01.27.03.36.35;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@An implementation of interface blockingqueue.
+We must devise a way to destroy the data in the queue.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/*
+ * $Header$
+ * $Author$
+ * $Date$
+ * CVS: $Id$
+ * $Revision$
+ * $Log$
+ */
+#include <stdio.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <assert.h>
+#include "blockingqueue.h"
+
+/**
+ * An implementation of interface blockingqueue.h
+ */
+typedef struct BlockingQueueNode *Node;
+struct BlockingQueueNode {
+  struct BlockingQueueNode *next;
+  struct BlockingQueueNode *prev;
+  void *data;
+};
+
+struct BQueue {
+  Node head;
+  Node tail;
+  pthread_mutex_t lock;
+  pthread_cond_t queue_ready;
+};
+
+static int is_empty( BlockingQueue queue );
+
+BlockingQueue blockingqueue_new( void ) {
+  BlockingQueue queue;
+  queue = (BlockingQueue) malloc( sizeof( *queue ) );
+  if ( queue != NULL ) {
+    queue->tail = NULL;
+    queue->head = queue->tail;
+    pthread_mutex_init( &queue->lock, NULL );
+    pthread_cond_init( &queue->queue_ready, NULL );
+  }
+  return queue;
+}
+
+int blockingqueue_enqueue( BlockingQueue queue, void *data ) {
+  assert( queue != NULL );
+  pthread_mutex_lock( &queue->lock );
+  Node node = (Node) malloc( sizeof( *node ) );
+  if ( node == NULL ) {
+    pthread_mutex_unlock( &queue->lock );
+    return -1;
+  }
+  if ( is_empty( queue ) ) {
+    node->next = NULL;
+    node->prev = NULL;
+    node->data = data;
+    queue->head = node;
+    queue->tail = node;
+  } else {
+    node->next = queue->tail->next;
+    node->prev = queue->tail;
+    node->data = data;
+    queue->tail = node;
+  }
+  pthread_mutex_unlock( &queue->lock );
+  pthread_cond_signal( &queue->queue_ready );
+  return 0;
+}
+
+void *blockingqueue_dequeue( BlockingQueue queue ) {
+  assert( queue != NULL );
+  pthread_mutex_lock( &queue->lock );
+  while ( is_empty( queue ) ) {
+    pthread_cond_wait( &queue->queue_ready, &queue->lock );
+  }
+  Node node = queue->head;
+  void *rp = node->data;
+  queue->head = queue->head->next;
+  /* free( node ); */
+  pthread_mutex_unlock( &queue->lock );
+  return rp;
+}
+
+int blockingqueue_destroy( BlockingQueue queue ) {
+  if ( queue == NULL ) {
+    return 0;
+  }
+  Node node, tmp;
+  node = queue->head;
+  while ( node != NULL ) {
+    tmp = node;
+    node = node->next;
+    free( tmp );
+  }
+  free( queue );
+  return 0;
+}
+
+static int is_empty( BlockingQueue queue ) {
+  assert( queue != NULL );
+  return queue->head == NULL;
+}
+/* End of $Source$ */
+@

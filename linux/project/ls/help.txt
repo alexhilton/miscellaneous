@@ -1,0 +1,21 @@
+Usage: mylist [-rglhv] [arg1] [arg2] [arg3] ...
+
+  An implementation of ls.
+  It takes a list of command line arguments and list each arguments. If the
+  argument is a directory, it will list all the entries in that directory.
+  Otherwise it will list that file. There are three major options -g, -l and -r.
+  -g and -l are mutex, which means only one of -g and -l can be applied. If
+  both are given -g will be ignored. -g is the default option.
+  If there is no command line arguments, current directory will be listed.
+  The output of each argument should be separated by a line of '='.
+  There should be a title line for option -l.
+   	-g or --general: list file name only, in lexical order. There are 100
+   	                 columns in each row, and two spaces between each column. 
+  	                 The width of column is the length of longest file name.
+   	                 The sort order is up to down, then left to right.
+   	-l or --list: list all information about a file, each file a line,
+	              including:
+		      PERM  SIZE  USR GRP MD TYPE
+   	-r or --recursive: list each subdirectory recursively.
+   	-h or --help: display help info
+   	-v or --verison: display version info, author info and copyright info.

@@ -1,0 +1,36 @@
+#!/bin/bash
+# judge for OJ
+
+echo "************************" Auto Testing System "***********************"
+
+echo the performance of program $1
+echo ------------------------------------
+time ./$1 < input.dat > $1.dat
+echo ------------------------------------
+if [ $# -lt 2 ]; then
+  echo ------------------$1.dat-------------------------------------------output.dat-------------------------
+  diff --side-by-side $1.dat output.dat;
+else 
+  if [ "$2" == "0" ]; then
+    echo the testing result of $1
+    echo -------------------------------------------
+    diff --brief $1.dat output.dat
+    echo -------------------------------------------
+  else 
+    if [ "$2" == "1" ]; then
+      echo the comparation of your result and the standard answer:
+      echo --------------------------------------------- 
+      diff --side-by-side $1.dat output.dat
+      echo --------------------------------------------- 
+    else 
+      echo the differences are:
+      echo -------------------------------------------------------------------------- 
+      diff $1.dat output.dat
+      echo -------------------------------------------------------------------------- 
+    fi
+  fi
+fi
+
+echo "************************" end of testing "***********************"
+rm -f $1.dat
+# end of judge

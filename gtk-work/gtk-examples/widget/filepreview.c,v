@@ -1,0 +1,253 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	2009.10.05.01.53.04;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@Initial version of file preview.
+It has implemented all the features.
+TODO: there might be memory leak, we should release contents in file_clicked function.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/**
+ * $Header$
+ * $Author$
+ * $Date$
+ *
+ * filepreview.c
+ * This program reads a ASCII text file, displays the contents on a label. You
+ * can set the font and color of texts.
+ * Two tricks used in this example:
+ * 	# Use empty label, or text to arrange widgets on right place
+ * 	# Use boxes to make widgets look homogenous. Arrange boxes and other
+ * 	  widgets together would make organization look unhomogenous.
+ * $Revision$
+ * $Log$
+ */
+#include <stdio.h>
+#include <gtk/gtk.h>
+
+static const char rcs_id[] = "$Id$";
+
+/* data structure to hold information */
+typedef struct {
+  GtkFileChooser *file;
+  GtkLabel *preview;
+  GtkFontButton *font;
+  GtkColorButton *color;
+} Data;
+
+/* signal handlers */
+static void path_clicked( GtkFileChooser *path, Data *data );
+static void file_clicked( GtkFileChooser *file, Data *data );
+static void font_clicked( GtkFontButton *button, Data *data );
+static void color_clicked( GtkColorButton *button, Data *data );
+static gboolean before_exit( GtkWidget *widget, gpointer data );
+static void exit_clicked( GtkWidget *button, GtkWidget *window );
+static gboolean window_close( GtkWidget *window, GdkEvent *event, gpointer data );
+
+/* main program */
+int main( int argc, char **argv ) {
+  gtk_init( &argc, &argv );
+
+  /* create and decorate the main window */
+  GtkWidget *window = gtk_window_new( GTK_WINDOW_TOPLEVEL );
+  gtk_window_set_title( GTK_WINDOW( window ), "File Preview" );
+  gtk_container_set_border_width( GTK_CONTAINER( window ), 20 );
+  gtk_widget_set_size_request( window, 480, 600 );
+
+  GtkWidget *label_path = gtk_label_new( "Select Path" );
+  GtkWidget *label_file = gtk_label_new( "Select File" );
+  GtkWidget *label_font = gtk_label_new( "Select Font" );
+  GtkWidget *label_color = gtk_label_new( "Select Color" );
+  /* the initial text is used to arrange widgets on right place */
+  GtkWidget *label_preview = gtk_label_new( "\n\n\n\n\n\n\n\n\n\n\n\n\n\n" );
+
+  GtkWidget *button_path = gtk_file_chooser_button_new( "Select Path",
+      GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER );
+  GtkWidget *button_file = gtk_file_chooser_button_new( "Select File",
+      GTK_FILE_CHOOSER_ACTION_OPEN );
+  GtkFileFilter *filter = gtk_file_filter_new();
+  gtk_file_filter_set_name( filter, "Text Files" );
+  gtk_file_filter_add_pattern( filter, "*.txt" );
+  gtk_file_filter_add_pattern( filter, "*.c" );
+  gtk_file_filter_add_pattern( filter, "*.cc" );
+  gtk_file_filter_add_pattern( filter, "*.java" );
+  gtk_file_filter_add_pattern( filter, "*.h" );
+  gtk_file_filter_add_pattern( filter, "*.hh" );
+  gtk_file_chooser_add_filter( GTK_FILE_CHOOSER( button_file ), filter );
+  /* PangoFontDescription *init_font = pango_font_description_from_string( "Sans Bold 12" ); */
+  GtkWidget *button_font = gtk_font_button_new_with_font( "Sans Bold 12" );
+  GdkColor init_color;
+  gdk_color_parse( "#003366", &init_color );
+  GtkWidget *button_color = gtk_color_button_new_with_color( &init_color );
+
+  /*
+   * label_space has only one mission ---- to arrange widget on right place.
+   */
+  GtkWidget *label_space = gtk_label_new( "\t\t\t\t\t\t" );
+  GtkWidget *button_exit = gtk_button_new_with_mnemonic( "E_xit" );
+  Data data;
+  data.file = GTK_FILE_CHOOSER( button_file );
+  data.preview = GTK_LABEL( label_preview );
+  data.font = GTK_FONT_BUTTON( button_font );
+  data.color = GTK_COLOR_BUTTON( button_color );
+
+  /* now arrange and organize those widgets onto main window */
+  GtkWidget *hbox_path = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_path ), label_path, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_path ), button_path, TRUE, TRUE, 10 );
+  GtkWidget *hbox_file = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_file ), label_file, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_file ), button_file, TRUE, TRUE, 10 );
+  GtkWidget *hbox_font = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_font ), label_font, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_font ), button_font, TRUE, TRUE, 10 );
+  GtkWidget *hbox_color = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_color ), label_color, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_color ), button_color, TRUE, TRUE, 10 );
+  GtkWidget *hbox_preview = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_preview ), label_preview, TRUE, TRUE, 10 );
+  GtkWidget *hbox_exit = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_end( GTK_BOX( hbox_exit ), button_exit, TRUE, TRUE, 10 );
+  gtk_box_pack_end( GTK_BOX( hbox_exit ), label_space, TRUE, TRUE, 10 );
+
+  GtkWidget *vbox = gtk_vbox_new( FALSE, 5 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_path, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_file, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_font, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_color, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_preview, TRUE, TRUE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_exit, FALSE, FALSE, 10 );
+
+  /* dealing with siganls */
+  g_signal_connect( G_OBJECT( window ), "delete_event", G_CALLBACK( window_close ), NULL );
+  /* we are gonna compare difference of "file_set" and "selection_changed" */
+  g_signal_connect( G_OBJECT( button_path ), "file_set", G_CALLBACK( path_clicked ), 
+      (gpointer) &data );
+  g_signal_connect( G_OBJECT( button_file ), "file_set", G_CALLBACK( file_clicked ), 
+      (gpointer) &data );
+  g_signal_connect( G_OBJECT( button_font ), "font_set", G_CALLBACK( font_clicked ), 
+      (gpointer) &data );
+  g_signal_connect( G_OBJECT( button_color ), "color_set", G_CALLBACK( color_clicked ),
+      (gpointer) &data );
+  g_signal_connect( G_OBJECT( button_exit ), "clicked", G_CALLBACK( exit_clicked ), 
+      (gpointer) window );
+
+  gtk_container_add( GTK_CONTAINER( window ), vbox );
+  gtk_widget_show_all( window );
+  gtk_main();
+  return 0;
+}
+
+static void path_clicked( GtkFileChooser *path, Data *data ) {
+  const char *filepath = gtk_file_chooser_get_filename( path );
+  gtk_file_chooser_set_current_folder( data->file, filepath );
+}
+
+static void file_clicked( GtkFileChooser *file, Data *data ) {
+  /* open file, read contents and set contents to label */
+  gchar *filename, *contents;
+  gsize length;
+  /* 
+   * you have to initialize error as NULL, otherwise, the following test 
+   * (error != NULL) will fail. If there is no error happened during operation,
+   * error won't be changed. If you don't initialize error explictly, it will be
+   * initializeed with some uncertain value by compiler. So, when
+   * g_file_get_contents goes smoothly, error remains its original value, which
+   * is neight NULL nor error. As a result, error->message would cause
+   * segmentation fault.
+   */
+  GError *error = NULL;
+  filename = gtk_file_chooser_get_filename( file );
+  g_file_get_contents( filename, &contents, &length, &error );
+  if ( error != NULL ) {
+    fprintf( stderr, "%s\n", error->message );
+    g_clear_error( &error );
+    return;
+  }
+  gtk_label_set_text( data->preview, contents );
+  PangoFontDescription *desc = pango_font_description_from_string(
+      gtk_font_button_get_font_name( data->font ) );
+  gtk_widget_modify_font( GTK_WIDGET( data->preview ), desc );
+  GdkColor color;
+  gtk_color_button_get_color( data->color, &color );
+  gtk_widget_modify_fg( GTK_WIDGET( data->preview ), GTK_STATE_NORMAL, &color );
+  g_free( filename );
+  /* Memory leak might happen here, we should have release contents */
+}
+
+static void font_clicked( GtkFontButton *button, Data *data ) {
+  PangoFontDescription *desc = pango_font_description_from_string(
+      gtk_font_button_get_font_name( button ) );
+  gtk_widget_modify_font( GTK_WIDGET( data->preview ), desc );
+}
+
+static void color_clicked( GtkColorButton *button, Data *data ) {
+  GdkColor color;
+  gtk_color_button_get_color( button, &color );
+  gtk_widget_modify_fg( GTK_WIDGET( data->preview ), GTK_STATE_NORMAL, &color );
+}
+
+static gboolean before_exit( GtkWidget *widget, gpointer data ) {
+  /* show a dialog */
+  GtkWidget *dialog = gtk_dialog_new_with_buttons( "Information", GTK_WINDOW( widget ),
+      GTK_DIALOG_MODAL, GTK_STOCK_NO, GTK_RESPONSE_NO, GTK_STOCK_YES, GTK_RESPONSE_YES,
+      NULL );
+  gtk_dialog_set_has_separator( GTK_DIALOG( dialog ), TRUE );
+  GtkWidget *label = gtk_label_new( "Do you really want to leave File Preview?" );
+  GtkWidget *image = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+      GTK_ICON_SIZE_DIALOG );
+
+  /* organize and arrange widgets on dialog */
+  GtkWidget *hbox = gtk_hbox_new( FALSE, 5 );
+  gtk_container_set_border_width( GTK_CONTAINER( hbox ), 10 );
+  gtk_box_pack_start( GTK_BOX( hbox ), image, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox ), label, FALSE, FALSE, 10 );
+  GtkWidget *ask_always = gtk_check_button_new_with_label( "Always ask before leaving." );
+  /*
+   * Here if you donot add ask_always on a hbox, add it on vbox directly, they
+   * look great differently.
+   * For homogenous, you'd better put all the widgets on boxes, even sometimes,
+   * there is only one widget.
+   */
+  GtkWidget *hbox_ask = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_ask ), ask_always, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog)->vbox ), hbox, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog)->vbox ), hbox_ask, FALSE, FALSE, 10 );
+  gtk_widget_show_all( dialog );
+
+  int result; /* result of running dialog according to different clicking of user */
+  result = gtk_dialog_run( GTK_DIALOG( dialog ) );
+  if ( result == GTK_RESPONSE_YES ) {
+    gtk_main_quit();
+    return TRUE;
+  }
+  gtk_widget_destroy( dialog );
+  return TRUE;
+}
+
+static void exit_clicked( GtkWidget *button, GtkWidget *window ) {
+  before_exit( window, NULL );
+}
+
+static gboolean window_close( GtkWidget *window, GdkEvent *event, gpointer data ) {
+  return before_exit( window, data );
+}
+
+/* End $Source$ */
+@

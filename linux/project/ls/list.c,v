@@ -1,0 +1,636 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.2
+date	2009.11.10.03.16.00;	author alex;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2009.11.09.04.53.08;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@Initial version.
+It works fine when there is only one command-line argument with all options.
+TODO: 'ls .. .' is different from 'ls . ..'.
+@
+
+
+1.2
+log
+@It works as expected.
+ToDo: use a debug/log functions to replace printfs.
+@
+text
+@/*
+ * $Header: /home/alex/work/linux/project/ls/list.c,v 1.1 2009/11/09 04:53:08 alex Exp alex $
+ * $Author: alex $
+ * $Date: 2009/11/09 04:53:08 $
+ * RCS id: $Id: list.c,v 1.1 2009/11/09 04:53:08 alex Exp alex $
+ *
+ * mylist.c
+ * An implementation of ls.
+ * It takes a list of command line arguments and list each arguments. If the
+ * argument is a directory, it will list all the entries in that directory.
+ * Otherwise it will list that file. There are three major options -g, -l and -r.
+ * -g and -l are mutex, which means only one of -g and -l can be applied. If
+ * both are given -g will be ignored. -g is the default option.
+ * If there is no command line arguments, current directory will be listed.
+ * For each directory, its name should be printed, followed its entries starting
+ * from its next line. The arguments which are not directories are listed as
+ * orphans, in lexical order.
+ * There should be a title line for option -l, like:
+ * PERM SIZE USR GRP MD TYPE
+ *  Options:
+ *  	-g or --general: list file name only, in lexical order. There are xx(we
+ *  			 use environment variable COLUMNS)
+ *  	                 columns in each row, and two spaces between each column. 
+ *  	                 The width of column is the length of longest file name.
+ *  	                 The sort order is up to down, then left to right.
+ *  	-l or --list: list all information about a file, each file a line.
+ *  		      Including permissions, size, user, group, modified time
+ *  		      and file type.
+ *  	-r or --recursive: list each subdirectory recursively.
+ *  	-h or --help: display help info
+ *  	-v or --verison: display version info, author info and copyright info.
+ * $Revision: 1.1 $
+ * $Log: list.c,v $
+ * Revision 1.1  2009/11/09 04:53:08  alex
+ * Initial revision
+ *
+ */
+#include <unistd.h>
+#include <stdio.h>
+#include <grp.h>
+#include <time.h>
+#include <pwd.h>
+#include <getopt.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <dirent.h>
+#include <string.h>
+#include <sys/types.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+
+enum { GENERAL = 0x00, LIST = 0x01, RECURSIVE = 0x02, HELP = 0x04, VERSION = 0x08 };
+#define MAX_COL 100 /* max width of screen */
+#define MAX_ARG 100 /* max number of command line arguments */
+
+#ifdef DEBUG
+#  define login( msg ) enter( msg )
+#  define logout( msg ) leave( msg )
+#  define log( msg ) loginfo( msg )
+#else
+#  define login( msg )
+#  define log( msg )
+#  define logout( msg )
+#endif
+/* Long options */
+static struct option long_options[] = {
+  { "general", no_argument, NULL, 'g' },
+  { "list", no_argument, NULL, 'l' },
+  { "recursive", no_argument, NULL, 'r' },
+  { "help", no_argument, NULL, 'h' },
+  { "version", no_argument, NULL, 'v' },
+  { NULL, 0, 0, 0 }
+};
+/* options */
+static char optstring[] = "glrhv";
+
+/* Log */
+static void enter( const char *msg );
+static void leave( const char *msg );
+static void loginfo( const char *msg );
+/* List a list of files */
+static int list_files( const char **path, int file_count, int mode );
+/* sort filenames */
+static void sort( const char **files, int count );
+/*
+ * List the entrices according to mode for directory path
+ */
+static int list_dir( const char *path, int mode );
+/*
+ * print detailed information about files
+ */
+static int print_detailed_info( const char **files, int count );
+/*
+ * List the command line arguments 
+ * If there is no arguments, list current directory by default
+ * If there are files(non-directory) in command line arguments, we list them
+ * first, then list each directories, if any.
+ * From mode, we can get which options are speficied, -r, -g or -l or
+ * combination.
+ * argc is the count of arguments.
+ * argv is the pointer to arguments, NULL terminated. Each argument is '\0'
+ * terminated character string.
+ */
+static int list_args( char **argv, int argc, int mode );
+/*
+ * print the file names.
+ */
+static int print_files( const char ** files, int count, int mode );
+static void help();
+static void version();
+/* current working path */
+static char cur_path[ MAX_ARG ];
+
+int main( int argc, char **argv ) {
+  int option = 0;
+  char ch;
+  int cmdx;
+  while ( (ch = getopt_long( argc, argv, optstring, long_options, &cmdx )) != -1 ) {
+    switch ( ch ) {
+    case 'g':
+      option |= GENERAL;
+      break;
+    case 'l':
+      option |= LIST;
+      break;
+    case 'r':
+      option |= RECURSIVE;
+      break;
+    case 'h':
+      option |= HELP;
+      break;
+    case 'v':
+      option |= VERSION;
+      break;
+    default:
+      fprintf( stderr, "Invalid option %c\n", ch );
+      break;
+    }
+  }
+
+  if ( (option & HELP) == HELP ) {
+    help();
+    return 0;
+  }
+  if ( (option & VERSION) == VERSION ) {
+    version();
+    return 0;
+  }
+
+  /*
+   * Make commarnd line arguments right ones excluding options.
+   * argv is the list of arguments, argc is the count of it.
+   */
+  argc -= optind;
+  argv += optind;
+  if ( argc < 0 ) {
+    fprintf( stderr, "Usage: list [-rglvh] [arg1] [arg2]...\n" );
+    return 0;
+  } else {
+    list_args( argv, argc, option );
+  }
+
+  return 0;
+}
+
+/* Display help info, from file help.txt */
+static void help() {
+  int fd;
+  if ( (fd = open( "help.txt", O_RDONLY, 0 )) < 0 ) {
+    fprintf( stderr, "open file help.txt failed: %s\n", strerror( errno ) );
+    return;
+  }
+  size_t size = 4096;
+  char buf[ 4096 ];
+  if ( (size = read( fd, buf, size )) > 0 ) {
+    if ( write( STDOUT_FILENO, buf, size ) != size ) {
+      fprintf( stderr, "write error: %s\n", strerror( errno ) );
+      return;
+    }
+  }
+  close( fd );
+}
+
+/* Display version info, copyright info and license */
+static void version() {
+  fprintf( stdout, "list version 1.0\nAuthor: Alex Hilton\nThis is open source software, and you are\n"
+      "free to use, redistribute and modify without any warnnary\n"
+      "Bug report: alex@@gnu.org\n" );
+}
+
+/* List command line arguments */
+static int list_args( char **argv, int argc, int mode ) {
+  login( __func__ );
+  if ( argc < 1 ) {
+    log( "no commarnd-line arguments" );
+    list_dir( ".", mode );
+    return 0;
+  }
+  struct stat buf;
+  char *dirs[ MAX_ARG ];
+  /****
+   * You might wonder why this definition of files works. Because it points to
+   * command line arguments finally. After passing into another function, the
+   * actual arguments of that function will point to command line arguments,
+   * too.
+   */
+  char *files[ MAX_ARG ];
+  int dir_count = 0;
+  int file_count = 0;
+  while ( argc-- > 0 ) {
+    /* 
+     * Check each argument, separate directories from files
+     * Use a directory list to store directories and a file list to store files
+     * Then we process them differently
+     */
+    if ( lstat( *argv, &buf ) < 0 ) {
+      fprintf( stderr, "file '%s', func '%s', line %d:\n\t", __FILE__, __func__, __LINE__ - 1 );
+      fprintf( stderr, "lstat error on file '%s': %s\n", *argv, strerror( errno ) );
+      continue;
+    }
+    if ( S_ISDIR( buf.st_mode ) ) {
+      dirs[ dir_count++ ] = *argv;
+    } else {
+      files[ file_count++ ] = *argv;
+    }
+    argv++;
+  }
+  list_files( (const char **) files, file_count, mode );
+  int i;
+  for ( i = 0; i < dir_count; i++ ) {
+    *cur_path = '\0';
+    list_dir( dirs[ i ], mode );
+    if ( i < dir_count - 1 ) {
+      putchar( '\n' ); 
+    }
+  }
+  logout( __func__ );
+  return 0;
+}
+
+/* 
+ * List entries of a directory
+ * Open the directory, read each entry, and call list_files to deal with the
+ * entrices.
+ */
+static int list_dir( const char *path, int mode ) {
+  login( __func__ );
+  DIR *dp;
+  struct dirent *dirp;
+  /****
+   * Here You cannot use char files[Max][Max].
+   * It will cause segmentation fault in function list_files.
+   * If you declare files as automatic variables, it will disappear after this
+   * function. It is only accessible in this function. But, it is weird, because
+   * we can use a function to deal with an array defined in the main function.
+   * We are gonna re-study this program later.
+   * But we can define it as char *files[], because each pointer to string will
+   * be passed as value.
+   */
+  char *files[ MAX_ARG ];
+  char parent_path[ MAX_ARG ];
+  int file_count = 0;
+  /* printf( "listing directory: %s\n", path ); */
+  *parent_path = '\0';
+  getcwd( parent_path, MAX_ARG );
+  if ( *cur_path != '\0' && cur_path[ strlen(cur_path)-1 ] != '/' ) {
+    strcat( cur_path, "/" );
+  }
+  strcat( cur_path, path );
+  printf( "%s%s:\n", cur_path,
+      path[ strlen(cur_path)-1 ] == '/' ? "" : "/" );
+  char cwd[ 1024 ];
+  chdir( path );
+  //fprintf( stderr, "parent path is: '%s', current_path is: '%s'\n", parent_path, cur_path );
+  //fprintf( stderr, "changing into: '%s'\n", path );
+  getcwd( cwd, 1024 );
+  //fprintf( stderr, "current working directory is: '%s'\n", cwd );
+  if ( (dp = opendir( "." )) == NULL ) {
+    fprintf( stderr, "file '%s', func '%s', line %d:\n\t", __FILE__, __func__, __LINE__ - 1 );
+    fprintf( stderr, "cannot open directory '%s': %s\n", path, strerror( errno ) );
+    return -1;
+  }
+  while ( (dirp = readdir( dp )) != NULL ) {
+    if ( strcmp( dirp->d_name, "." ) == 0 || strcmp( dirp->d_name, ".." ) == 0 ) {
+      /* Skip self and parent */
+      continue;
+    }
+    files[ file_count ] = (char *) malloc( MAX_ARG );
+    strcpy( files[ file_count++ ], dirp->d_name );
+  }
+  closedir( dp );
+  list_files( (const char **) files, file_count, mode );
+  chdir( parent_path );
+  //fprintf( stderr, "changing into path: '%s'\n", parent_path );
+  strcpy( cur_path, parent_path );
+  int i;
+  for ( i = 0; i < file_count; i++ ) {
+    /* Here, files is an array, you cannot use files++ */
+    free( files[ i ] );
+  }
+  logout( __func__ );
+  return 0;
+}
+
+/* 
+ * List a bunch of files
+ * If option -r is not specified, sort the files' names and print informations
+ * about files. If -l is set, each file a line with its detailed information.
+ * If -l is not specified(-g is specified), output the file names in
+ * multi-columns with two spaces between every two columns and the longest
+ * filename as the width of each columns. The total width of output should be
+ * got from environment varaible COLUMNS.
+ * If option -r is specified, we should call list_dir for each directory, 
+ * we should list them recursively
+ */
+static int list_files( const char **files, int count, int mode ) {
+  login( __func__ );
+  /* No matter what options are, we have to sort the file names first */
+  sort( files, count );
+  /*
+   * If -r are specified, we need to deal with regular files and directories
+   * differently. So we need to saperate them.
+   * Otherwise, we don't have to saperate directories from files.
+   */
+  const char *dirs[ MAX_ARG ];
+  int dir_count = 0;
+  struct stat buf;
+  int i;
+  if ( (mode & RECURSIVE) == RECURSIVE ) {
+    /* -r is specified */
+    /* Saperate directories from other files */
+    log( "-r is specified" );
+    for ( i = 0; i < count; i++ ) {
+      if ( stat( files[ i ], &buf ) < 0 ) {
+	fprintf( stderr, "file '%s', func '%s', line %d:\n\t", __FILE__, __func__, __LINE__ - 1 );
+	fprintf( stderr, "stat error on file '%s': %s\n", files[i], strerror(errno) );
+	return -1;
+      }
+      if ( S_ISDIR( buf.st_mode ) ) {
+	dirs[ dir_count++ ] = files[ i ];
+      }
+    }
+    print_files( (const char **) files, count, mode );
+    for ( i = 0; i < dir_count; i++ ) {
+      putchar( '\n' );
+      list_dir( dirs[i], mode );
+    }
+    return 0;
+  }
+  /* -r is not specified */
+  print_files( (const char **) files, count, mode );
+  logout( __func__ );
+  return 0;
+}
+
+/*
+ * Func: print_files( char **files, int count, int mode );
+ * Print the file names to standard output.
+ */
+static int print_files( const char **files, int file_count, int mode ) {
+  if ( file_count < 1 ) {
+    /* nothing to do */
+    return 0;
+  }
+  login( __func__ );
+  /*printf( "printing %d files with mode=0x%x\n", file_count, mode );*/
+  if ( (mode & LIST) == LIST ) {
+    /* line by line with detailed information */
+    log( "-l is specified" );
+    print_detailed_info( files, file_count );
+    return 0;
+  }
+  int max_len = strlen( files[ 0 ] );
+  int i;
+  for ( i = 1; i < file_count; i++ ) {
+    if ( max_len < strlen( files[ i ] ) ) {
+      max_len = strlen( files[ i ] );
+    }
+  }
+  /*printf( "max length of files is: %d\n", max_len );*/
+  /* get column width of terminal through environment variable */
+  char *column;
+  int column_width;
+  if ( (column = getenv( "COLUMNS" )) == NULL ) {
+    column_width = 100;
+  } else {
+    column_width = atoi( column );
+  }
+  /*printf( "column_width is %d\n", column_width );*/
+  int col, row; /* column count and row count */
+  col = column_width / ( max_len + 2 ); /* There are two spaces between each two columns */
+  row = file_count / col;
+  col++; /* make it 0 to col - 1 */
+  row++; /* make it 0 to row - 1 */
+  /* Now output the files */
+  /*printf( "there are %d rows, %d cols\n", row, col ); */
+  int j, k, index;
+  for ( i = 0; i < row; i++ ) {
+    for ( j = 0; j < col; j++ ) {
+      index = i + j * row;
+      if ( index >= file_count ) {
+	break;
+      }
+      printf( "%s", files[ index ] );
+      /* we make sure all columns are in the same width, filling blanks make it so */
+      for ( k = 0; k < max_len - strlen( files[ index ] ); k++ ) {
+	printf( " " );
+      }
+      printf( "  " );
+    }
+    printf( "\n" );
+  }
+  logout( __func__ );
+  return 0;
+}
+
+/* sort the file names by lexical order */
+static void sort( const char **files, int count ) {
+  login( __func__ );
+  /*printf( "sorting %d files\n", count );*/
+  int i, j;
+  const char *tmp;
+  for ( i = 0; i < count - 1; i++ ) {
+    for ( j = i + 1; j < count; j++ ) {
+      if ( strcmp( files[i], files[j] ) > 0 ) {
+	/* swap files[i] and files[j] */
+	tmp = files[ i ];
+	files[ i ] = files[ j ];
+	files[ j ] = tmp;
+      }
+    }
+  }
+  /*printf( "after sorting:\n" );
+  while ( count-- > 0 ) {
+    printf( "\t\t%s\n", *files++ );
+  }*/
+  logout( __func__ );
+}
+
+/*
+ * print files with their detailed information
+ */
+static int print_detailed_info( const char **files, int count ) {
+  login( __func__ );
+  printf( "%-10s  %7s  %-10s  %-10s  %-24s  %-14s  %-14s\n", "Attributes", "  Size", 
+      "  User", "  Group", "  Last modified time", "  File name", "  File Type" );
+  printf( "%-10s  %-7s  %-10s  %-10s  %-24s  %-14s  %-14s\n", "==========", "=======", 
+      "==========", "==========", "========================", "==============", "==============" );
+  struct stat buf;
+  char attr[ 11 ]; /* attribute array, like 'drw-rw-rw-' */
+  while ( count-- > 0 ) {
+    if ( stat( *files, &buf ) < 0 ) {
+      fprintf( stderr, "file '%s', func '%s', line %d:\n\t", __FILE__, __func__, __LINE__ );
+      fprintf( stderr, "stat error on file '%s': %s\n", *files, strerror( errno ) );
+      return -1;
+    }
+    if ( S_ISDIR( buf.st_mode ) ) {
+      attr[ 0 ] = 'd';
+    } else {
+      attr[ 0 ] = '-';
+    }
+    if ( (S_IRUSR & buf.st_mode) == S_IRUSR ) {
+      attr[ 1 ] = 'r';
+    } else {
+      attr[ 1 ] = '-';
+    }
+    if ( (S_IWUSR & buf.st_mode) == S_IWUSR ) {
+      attr[ 2 ] = 'w';
+    } else {
+      attr[ 2 ] = '-';
+    }
+    if ( (S_IXUSR & buf.st_mode) == S_IXUSR ) {
+      attr[ 3 ] = 'x';
+    } else {
+      attr[ 3 ] = '-';
+    }
+    if ( (S_IRGRP & buf.st_mode) == S_IRGRP ) {
+      attr[ 4 ] = 'r';
+    } else {
+      attr[ 4 ] = '-';
+    }
+    if ( (S_IWGRP & buf.st_mode) == S_IWGRP ) {
+      attr[ 5 ] = 'w';
+    } else {
+      attr[ 5 ] = '-';
+    }
+    if ( (S_IXGRP & buf.st_mode) == S_IXGRP ) {
+      attr[ 6 ] = 'x';
+    } else {
+      attr[ 6 ] = '-';
+    }
+    if ( (S_IROTH & buf.st_mode) == S_IROTH ) {
+      attr[ 7 ] = 'r';
+    } else {
+      attr[ 7 ] = '-';
+    }
+    if ( (S_IWOTH & buf.st_mode) == S_IWOTH ) {
+      attr[ 8 ] = 'w';
+    } else {
+      attr[ 8 ] = '-';
+    }
+    if ( (S_IXOTH & buf.st_mode) == S_IXOTH ) {
+      attr[ 9 ] = 'x';
+    } else {
+      attr[ 9 ] = '-';
+    }
+    attr[ 10 ] = '\0';
+    printf( "%-10s  ", attr );
+    printf( "%7ld  ", buf.st_size );
+    struct passwd *pwent;
+    if ( (pwent = getpwuid( buf.st_uid )) == NULL ) {
+      fprintf( stderr, "file '%s', func '%s', line %d:\n\t", __FILE__, __func__, __LINE__ );
+      fprintf( stderr, "error on getpwuid: %s\n", strerror( errno ) );
+      return -1;
+    }
+    printf( "%-10s  ", pwent->pw_name );
+    struct group *grpent;
+    if ( (grpent = getgrgid( buf.st_gid )) == NULL ) {
+      fprintf( stderr, "file '%s', func '%s', line %d:\n\t", __FILE__, __func__, __LINE__ );
+      fprintf( stderr, "error on getgrgid: %s\n", strerror( errno ) );
+      return -1;
+    }
+    printf( "%-10s  ", grpent->gr_name );
+    char *lmtime = ctime( &buf.st_mtime );
+    lmtime[ strlen( lmtime ) - 1 ] = '\0'; /* eliminate '\n' */
+    printf( "%-24s  ", lmtime );
+    printf( "%-14s  ", *files++ ); /* file name */
+    char *type;
+    if ( S_ISREG( buf.st_mode ) ) {
+      type = "regular";
+    }
+    if ( S_ISCHR( buf.st_mode ) ) {
+      type = "character";
+    }
+    if ( S_ISBLK( buf.st_mode ) ) {
+      type = "block special";
+    }
+    if ( S_ISFIFO( buf.st_mode ) ) {
+      type = "FIFO";
+    }
+    if ( S_ISLNK( buf.st_mode ) ) {
+      type = "symbolic link";
+    }
+    if ( S_ISSOCK( buf.st_mode ) ) {
+      type = "socket";
+    }
+    printf( "%-14s\n", type );
+  }
+  logout( __func__ );
+  return 0;
+}
+
+static void enter( const char *msg ) {
+  fprintf( stderr, "entering function: %s\n", msg );
+}
+
+static void leave( const char *msg  ) {
+  fprintf( stderr, "leaving function: %s\n", msg );
+}
+
+static void loginfo( const char *msg ) {
+  fprintf( stderr, "%s\n", msg );
+}
+/* End of $Source: /home/alex/work/linux/project/ls/list.c,v $ */
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 4
+a5 4
+ * $Header$
+ * $Author$
+ * $Date$
+ * RCS id: $Id$
+d32 5
+a36 2
+ * $Revision$
+ * $Log$
+d217 1
+a217 1
+      fprintf( stderr, "file '%s', func '%s', line %d:\n\t", __FILE__, __func__, __LINE__ );
+d265 2
+a266 2
+  strcpy( parent_path, cur_path );
+  if ( *cur_path != '\0' ) {
+d270 2
+a271 2
+  printf( "%s/:\n", cur_path );
+      //path[ strlen(cur_path)-1 ] == '/' ? "" : "/" );
+d274 2
+d277 1
+a277 1
+  //printf( "current working directory is: '%s'\n", cwd );
+d279 1
+a279 1
+    fprintf( stderr, "file '%s', func '%s', line %d:\n\t", __FILE__, __func__, __LINE__ );
+d294 1
+d564 1
+a564 1
+/* End of $Source$ */
+@

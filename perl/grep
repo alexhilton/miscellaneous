@@ -1,0 +1,115 @@
+#!/usr/bin/perl -w
+
+if (@ARGV < 1) {
+    &showUsageAndQuit();
+}
+
+sub showUsageAndQuit {
+    print "Usage: grep [options] pattern [files]\n";
+    print "  Search pattern in text files specified by files argument, if do not ";
+    print "provide files, search all text files in current directory by default\n";
+    print "  grep will ignore case by default. If you want to match case, use -I.\n";
+    print "options:\n";
+    print "\t-I -- DO NOT ignore case\n";
+    print "\t-r -- recursively grep into subdirectories\n";
+    print "\t-h -- print this help info.\n";
+    exit;
+}
+
+my $path_separator = "/";
+my $pattern;
+my $options = "";
+my @files;
+if (@ARGV == 1) {
+    $pattern = shift @ARGV;
+    if ($pattern =~ /^-[a-zA-Z]*$/is) {
+        &showUsageAndQuit();
+    }
+} elsif (@ARGV == 2) {
+    my $first_arg = shift @ARGV;
+    print "first arge is $first_arg\n";
+    if ($first_arg =~ /^-[rIh]/) {
+        $options = $first_arg;
+        $pattern = shift @ARGV;
+    } else {
+        $pattern = $first_arg;
+        @files = @ARGV;
+    }
+} else {
+    $options = shift @ARGV;
+    $pattern = shift @ARGV;
+    @files = @ARGV;
+}
+print "options $options\n";
+print "pattern $pattern\n";
+if ($options =~ /^-h$/i) {
+    &showUsageAndQuit();
+}
+my $ignore_case = "";
+$ignore_case = 'i' if $options =~ /i/i;
+print "case $ignore_case\n";
+if (@files < 1) {
+    @files = &getFilesInCurrentDir();
+}
+
+foreach (@files) {
+    &processEntry($_);
+}
+
+sub processEntry {
+    my $entry = shift @_;
+    if (-f -T $entry) {
+        &searchInFile($entry);
+    } elsif (-d $entry and $options =~ /r/i) {
+        &searchInDir($entry);
+    }
+}
+
+sub searchInDir {
+    my $dir = shift @_;
+    return unless -d $dir;
+    opendir DIR, $dir or return;
+    foreach my $entry (readdir DIR) {
+        next if $entry =~ /^\./;
+        &processEntry($dir . $path_separator . $entry);
+    }
+    closedir DIR;
+}
+
+sub getFilesInCurrentDir {
+    my $dir = ".";
+    my @entries;
+    opendir DIR, $dir or die "cannot open $dir: $!";
+    foreach my $file (readdir DIR) {
+        next if $file =~ /^\./;
+        push @entries, $file;
+    }
+    closedir DIR;
+    return @entries;
+}
+
+sub searchInFile {
+    my $target = shift @_;
+    open FILE, $target or return;
+    my $lineno = 1;
+    while (<FILE>) {
+        if ($options =~ /I/) {
+            if (/$pattern/) {
+                &outputResult($target, $lineno, $_);
+            }
+        } else {
+            if (/$pattern/i) {
+                &outputResult($target, $lineno, $_);
+            }
+        }
+        $lineno += 1;
+    }
+    close FILE;
+}
+
+sub outputResult {
+    my $target = shift @_;
+    my $lineno = shift @_;
+    my $match = shift @_;
+    printf "%s:%d\t\t%s", $target, $lineno, $match;
+}

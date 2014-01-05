@@ -1,0 +1,124 @@
+============================================================
+These are with default options.
+
+the integer types:
+width of char type in bits is 8
+min value of signed char is -128
+max value of signed char is 127
+max value of unsigned char is 255
+min value of unsigned char is 0
+min value of short int is -32768
+max value of short int is 32767
+max value of unsigned short is 65535
+min value of unsigned short is 0
+min value of int is -2147483648
+max value of int is 2147483647
+max value of unsigned int is 4294967295
+min value of unsigned int is 0
+min value of long is -2147483648
+max value of long is 2147483647
+max value of unsigned long is 4294967295
+min value of unsigned long is 0
+Floating-point types:
+min value of float is 1.17549e-38
+max value of float is 3.40282e+38
+min value of double is 2.22507e-308
+max value of double is 1.79769e+308
+min value of long double is 3.362103e-4932
+max value of long double is 1.189731e+4932
+
+
+=========================================================
+These are with ansi Standard, the same to default.
+
+the integer types:
+width of char type in bits is 8
+min value of signed char is -128
+max value of signed char is 127
+max value of unsigned char is 255
+min value of unsigned char is 0
+min value of short int is -32768
+max value of short int is 32767
+max value of unsigned short is 65535
+min value of unsigned short is 0
+min value of int is -2147483648
+max value of int is 2147483647
+max value of unsigned int is 4294967295
+min value of unsigned int is 0
+min value of long is -2147483648
+max value of long is 2147483647
+max value of unsigned long is 4294967295
+min value of unsigned long is 0
+Floating-point types:
+min value of float is 1.17549e-38
+max value of float is 3.40282e+38
+min value of double is 2.22507e-308
+max value of double is 1.79769e+308
+min value of long double is 3.362103e-4932
+max value of long double is 1.189731e+4932
+
+=========================================================
+These are with C89 Standard, the same to ansi and default.
+
+the integer types:
+width of char type in bits is 8
+min value of signed char is -128
+max value of signed char is 127
+max value of unsigned char is 255
+min value of unsigned char is 0
+min value of short int is -32768
+max value of short int is 32767
+max value of unsigned short is 65535
+min value of unsigned short is 0
+min value of int is -2147483648
+max value of int is 2147483647
+max value of unsigned int is 4294967295
+min value of unsigned int is 0
+min value of long is -2147483648
+max value of long is 2147483647
+max value of unsigned long is 4294967295
+min value of unsigned long is 0
+Floating-point types:
+min value of float is 1.17549e-38
+max value of float is 3.40282e+38
+min value of double is 2.22507e-308
+max value of double is 1.79769e+308
+min value of long double is 3.362103e-4932
+max value of long double is 1.189731e+4932
+
+=========================================================
+These are limits with C99 Standard, Long long is new here.
+
+the integer types:
+width of char type in bits is 8
+min value of signed char is -128
+max value of signed char is 127
+max value of unsigned char is 255
+min value of unsigned char is 0
+min value of short int is -32768
+max value of short int is 32767
+max value of unsigned short is 65535
+min value of unsigned short is 0
+min value of int is -2147483648
+max value of int is 2147483647
+max value of unsigned int is 4294967295
+min value of unsigned int is 0
+min value of long is -2147483648
+max value of long is 2147483647
+max value of unsigned long is 4294967295
+min value of unsigned long is 0
+min value of long long is 9223372036854775807
+max value of long long is 9223372036854775807
+max value of unsigned long long is 18446744073709551615
+min value of unsigned long long is 0
+Floating-point types:
+min value of float is 1.17549e-38
+max value of float is 3.40282e+38
+min value of double is 2.22507e-308
+max value of double is 1.79769e+308
+min value of long double is 3.362103e-4932
+max value of long double is 1.189731e+4932
+
+
+=========================================================
+

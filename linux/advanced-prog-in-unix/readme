@@ -1,0 +1,5 @@
+This directory is for learning <Advanced Programming in The Unix Environment>
+directory com contains common resources which are used in each chapters.
+each chap directory contains examples with prefixes eg like eg0201 -- example
+one of chap 2.
+exercises with prefixes ex like ex0201 -- exercises 1 of chap 2

@@ -1,0 +1,9 @@
+%c
+%a %b %d/%y (Week %W)
+%a %B %d, %Y TIME %X
+%A %b %d, %Y Zone %Z
+%A %B %d, %Y (weekday # %w)
+%x   **   %X
+%m/%d/%Y  %I:%M %p
+%Y/%d/%m %H:%M:%S
+%Y-%m-%d (day %j of year)

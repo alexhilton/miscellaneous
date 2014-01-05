@@ -1,0 +1,68 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	2010.01.27.03.35.24;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@TODO: the data maintain by the queue is a pointer from outside.
+It must be destroy when queue is destroying.
+We must devise a way to destroy the data in the queue.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/*
+ * $Header$
+ * $Author$
+ * $Date$
+ * CVS: $Id$
+ * $Revision$
+ * $Log$
+ */
+#ifndef _blockingqueue_h
+#define _blockingqueue_h
+
+/**
+ * Qlocking Queue A data structure supports FIFO but ONLY ONE task is allowed to
+ * insert or remove from it at a time.
+ */
+typedef struct BQueue *BlockingQueue;
+
+/**
+ * Create and initializing a new and empty queue.
+ */
+BlockingQueue blockingqueue_new( void );
+
+/**
+ * Insert an element into the queue
+ * Return 0 on success, other(usually -1) on error.
+ */
+int blockingqueue_enqueue( BlockingQueue queue, void *data );
+
+/**
+ * Popping an element from the queue
+ * Returning the data you want or NUll on error.
+ */
+void *blockingqueue_dequeue( BlockingQueue queue );
+
+/** 
+ * Destroy the queue 
+ * Returning 0 on success, 1 on failure
+ */
+int blockingqueue_destroy( BlockingQueue queue );
+
+#endif
+/* End of $Source$ */
+@

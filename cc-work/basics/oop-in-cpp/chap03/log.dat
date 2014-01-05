@@ -1,0 +1,15 @@
+
+ID: Eat pizzas and drink beer
+	start: Wed Dec 24 03:49:03 2008
+	finish: Wed Dec 24 05:49:03 2008
+	DU: 7200
+
+ID: Open beer
+	start: Wed Dec 24 03:49:00 2008
+	finish: Wed Dec 24 03:49:02 2008
+	DU: 2
+
+ID: Defrost pizzas
+	start: Wed Dec 24 02:49:00 2008
+	finish: Wed Dec 24 03:49:00 2008
+	DU: 3600

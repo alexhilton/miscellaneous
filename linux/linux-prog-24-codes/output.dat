@@ -1,0 +1,47 @@
+worker Paul is waiting for tools
+worker Paul is using tools
+ 1 Hammer
+ 1 Chisel
+ 1 Screwdriver
+worker Alfred is waiting for tools
+worker Robert is waiting for tools
+worker Robert is using tools
+ 1 Hammer
+worker Adam is waiting for tools
+worker Paul is returning tools
+worker Paul is waiting for tools
+worker Paul is using tools
+ 1 Hammer
+ 2 Screwdrivers
+worker Robert is returning tools
+worker Robert is waiting for tools
+worker Robert is using tools
+ 2 Screwdrivers
+ 1 Chisel
+ 1 Hammer
+worker Paul is returning tools
+worker Paul is waiting for tools
+worker Paul is using tools
+ 2 Screwdrivers
+worker Robert is returning tools
+worker Robert is waiting for tools
+worker Robert is using tools
+ 1 Hammer
+ 1 Chisel
+ 1 Screwdriver
+worker Paul is returning tools
+worker Robert is returning tools
+worker Alfred is using tools
+ 1 Hammer
+ 1 Screwdriver
+ 1 Chisel
+worker Alfred is returning tools
+worker Adam is using tools
+ 1 Chisel
+ 1 Hammer
+worker Adam is returning tools
+all workers have quit.
+all 3 Hammers are accounted for.
+all 2 Screwdrivers are accounted for.
+all 1 Chisels are accounted for.
+simulation complete.

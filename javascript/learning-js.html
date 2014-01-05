@@ -1,0 +1,623 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+    <head>
+       <title>Learning JavaScript Examples</title>
+       <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style type="text/css">
+
+        div { padding: 10px; }
+        #ch1202div { background-color: #ff0 }
+
+        #ch1204div1 { background-color: #00f;
+                color: #fff;
+                font-size: larger;
+                position: absolute;
+                width: 400px;
+                height: 200px;
+                left: -410px;
+                top: -400px;
+                }
+        #ch1204div2 { background-color: #ff0;
+                color: #;
+                font-size: larger;
+                position: absolute;
+                width: 400px;
+                height: 200px;
+                left: -410px;
+                top: -400px;
+                }
+        #ch1204div3 { background-color: #f00;
+                color: #fff;
+                font-size: larger;
+                position: absolute;
+                width: 400px;
+                height: 200px;
+                left: -410px;
+                top: -400px;
+                }
+                #ch1205div1 {
+                    overflow: hidden;
+                    position: absolute;
+                    top: 370px;
+                    left: 150px;
+                    border: 5px solid #00f;
+                    visibility: hidden;
+                    width: 400px;
+                    height: 200px; }
+                #ch1205img { border: 1px solid #000; }
+                #ch1206div1 { width: 700px; height: 150px ; border: 5px solid #ff0}
+                #ch1206div2 { width: 600px; height: 100px; overflow: auto ; border: 5px solid #0f0}
+                #ch1206div3 { width: 600px; height: 100px; ; border: 5px solid #0ff}
+                #ch1207data1     {
+                           position: absolute;
+                           top: 100px; left: 200px;
+                           padding: 0;
+                           width: 400px;
+                           height: 400px;
+                           background-color: #ff0;
+                           clip: rect(0px,400px,400px,0px);
+                           }
+
+                #ch1207data1 h3 {
+                          margin: 0; padding: 5px;
+                          font-size: smaller;
+                          background-color: #006;
+                          color: #fff;
+                          }
+
+                #ch1207contained {
+                           margin: 10px
+                           }
+                           
+                .help { position: relative;
+                        left: 300px;
+                        top: -150px;
+                        visibility: hidden;
+                        width: 100px;
+                        padding: 10px; 
+                        border: 1px solid #f00;
+                      }
+                #ch1208form a:hover {cursor : help}    
+
+                #ch1209form { margin: 20px; background-color: #DFE1CB;
+                       padding: 20px; width: 500px } 
+                #ch1209form a {color: #060; text-decoration: none }
+                .label { background-color: #003; width: 400px; border-right: 1px solid #fff; 
+                         padding: 10px; margin: 0 20px; color: #fff; text-align: center;
+                         border-bottom: 1px solid #fff;}
+                .label a { color: #fff }
+                .elements { background-color: #CCD9FF; margin: 0 20px; padding: 10px; 
+                        width: 400px; display: none}
+        </style>
+       <script type="text/javascript">
+           // chap 09 04 use timer to change image
+           var ct = 0;
+           var imgs = new Array("./learn-javascript-examples/impatient.gif",
+                   "./learn-javascript-examples/doomed.gif", 
+                   "./learn-javascript-examples/dotty.gif", 
+                   "./learn-javascript-examples/falling.gif", 
+                   "./learn-javascript-examples/dottyfirst.gif", 
+                   "./learn-javascript-examples/dottyback.gif", 
+                   "./learn-javascript-examples/upright.gif");
+           function progress() {
+               if (ct < imgs.length) {
+                   var img = document.getElementById("ch0904img");
+                   img.src = imgs[ct];
+                   ct++;
+                   setTimeout("progress()", 3000);
+               }
+           }
+           // chap 09 14 access named elements and change their inner HTML
+            function changeDiv() {
+               // get all elements idd 'ch0914elem1'
+               var ch0914elem1 = document.getElementById("ch0914elem1");
+               ch0914elem1.innerHTML = "<h1>Hello World</h1>";
+               var ch0914elem2  = document.getElementById("ch0914elem2");
+               ch0914elem2.innerHTML = "<ol><li>Option 1</li><li>Option 2</li></ol>";
+               var ch0914elem3 = document.getElementById("ch0914elem3");
+               ch0914elem3.innerHTML = "<img src='./learn-javascript-examples/dotty.gif' alt='dotty' />"; 
+            }
+           // chap 10 07 traversing the doc with node
+            function printTags(domLevel,n) {
+               console.log("\nLevel " + domLevel + ":\n");
+               console.log(n.nodeName + " ");
+               if (n.nodeType == 3) {
+                  console.log(n.nodeValue);
+               }
+               if (n.hasChildNodes()) {
+                  var child = n.firstChild;
+                  console.log(" { ");
+                  do {
+                     console.log(child.nodeName + " ");
+                     child = child.nextSibling;
+                  } while(child);
+                  console.log(" } ");
+                  var children = n.childNodes;  
+                  for(var i=0; i < children.length; i++) {   
+                     printTags(domLevel+1,children[i]);      
+                  }
+               }
+            }
+           // chap 10 04 accessing node properties
+            // random color generator
+            function randomColor() {
+                var r=Math.floor(Math.random() * 255).toString(16);
+                var g=Math.floor(Math.random() * 255).toString(16);
+                var b=Math.floor(Math.random() * 255).toString(16);
+                   return "#"+r+g+b;
+            }
+
+            // output some node properties
+            function outputNodeProps(nd) {
+               var strNode = "Node Type: " + nd.nodeType;
+               strNode += "\nNode Name: " + nd.nodeName;
+               strNode += "\nNode Value: " + nd.nodeValue;
+
+               // if style set (property of Element)
+               if (nd.style) {
+                  var clr = randomColor();
+                  nd.style.backgroundColor=clr;
+                  strNode += "\nbackgroundColor: " + clr;
+               }
+
+               // print out the node's properties
+               console.log(strNode);
+
+               // now process node's children
+               var children = nd.childNodes;
+               for(var i=0; i < children.length; i++) {
+                  outputNodeProps(children[i]);
+               }
+            }
+
+            function outputNodeProperties(item) {
+                var div = document.getElementById("ch1004div1");
+                if (div) {
+                    outputNodeProps(div);
+                }
+            }
+           // chap 10 examples, ch1010
+            function changeDoc() {
+               // first, remove header
+               var hdr = document.getElementById("ch1010hdr1");
+               var div = document.getElementById("ch1010div1");
+               div.removeChild(hdr);
+
+               // replace the image with text
+               var img = document.getElementById("ch1010img1");
+               var p = document.getElementById("ch1010p2");
+               var txt = document.createTextNode("New text node");
+               p.replaceChild(txt,img);
+
+               // add new element
+               var div2= document.createElement("div");
+               div2.innerHTML="<h1>The End</h1>";
+               document.body.appendChild(div2);
+            }
+           // chap 11 examples 
+           // chap 11 03 prototype
+           function Ch1103Tune(title) {
+               this.title = title;
+           }
+           function printTitle() {
+               alert(this.title);
+           }
+          
+           Ch1103Tune.prototype.print = printTitle;
+           var at = new Ch1103Tune("Like a rock");
+           //at.print();
+           // what if i just call printTitle()
+           //printTitle();
+           // difference of public and private
+           function SomeTune(title) {
+               this.title = title;
+               var atitle = "another " + title;
+               var printTitle = function() {
+                   alert(atitle);
+               }
+               this.print = printTitle;
+           }
+            var aSomeTune = new SomeTune("Take me to your heart");
+            try {
+                //aSomeTune.printTitle();
+            } catch (e) {
+                alert("oops exception caught: " + e);
+            }
+            //aSomeTune.print();
+           // chap 11 06 chained construcctors and inheritances through the function method apply
+           function Ch1106Tune(title, type) {
+               this.title = title;
+               this.type = type;
+               this.getTitle = function() {
+                   return "Song: " + this.title + " type: " + this.type;
+               }
+           }
+
+           function Ch1106ArtistTune(title, type, artist) {
+               this.artist = artist;
+               this.toString("Artist is " + artist);
+               Ch1106Tune.apply(this, arguments);
+               this.toString = function() {
+                   return "Artist: " + this.artist + " " + this.getTitle();
+               }
+           }
+          
+           Ch1106ArtistTune.prototype = new Ch1106Tune();
+           var song = new Ch1106ArtistTune("I want to hold your hand", "rock", "Beatles");
+           //alert(song.toString());
+           // chap 12 01 and 02 example
+           window.onload = function() {
+               setTimeout("changeCSS()", 3000);
+           }
+
+           function changeCSS() {
+               var div = document.getElementById("chap1201");
+               div.style.backgroundColor = "#f00";
+               div.style.width = "100px";
+               div.style.color = "#fff";
+               div.style.height = "50px";
+               div.style.paddingLeft = "20px";
+               div.style.paddingTop = "20px";
+               div.style.fontFamily = "Verdana";
+               div.style.borderColor = "#000";
+           }
+
+            // chap 12 02 example change and get style of css properties
+           function getStyle(obj, jsprop, cssprop) {
+               var value;
+               if (obj.currentStyle) {
+                   console.log("currentStyle " + obj.currentStyle[jsprop]);
+                   value = obj.currentStyle[jsprop];
+               } else if (window.getComputedStyle) {
+                   console.log("getComputed " + document.defaultView.getComputedStyle(obj, null).getPropertyValue(cssprop));
+                   value = document.defaultView.getComputedStyle(obj, null).getPropertyValue(cssprop);
+               } else {
+                   console.log("neither thing exists");
+               }
+               return value;
+           }
+
+           function changeElement() {
+               var div = document.getElementById("ch1202div");
+               console.log("backgroundColor is " + div.style.backgroundColor);
+               getStyle(div, "backgroundColor", "background-color");
+               div.style.backgroundColor = "#ff0000";
+               console.log("backgroundColor is " + div.style.backgroundColor);
+               console.log("borderColor " + div.borderColor);
+               getStyle(div, "borderColor", "border-color");
+               console.log("width " + div.width);
+               getStyle(div, "width", "width");
+               console.log("height " + div.height);
+               getStyle(div, "height", "height");
+               console.log("color " + div.color);
+               getStyle(div, "color", "color");
+               console.log("paddingLeft " + div.paddingLeft);
+               getStyle(div, "paddingLeft", "background-color");
+           }
+            
+           // chap 12 03
+            function makeMore() {
+              var div = document.getElementById("ch1203");
+              div.style.fontSize="larger";
+              div.style.letterSpacing="3px";
+              div.style.textAlign="justify";
+              div.style.textTransform="uppercase";
+              div.style.fontSize="xx-large";
+              div.style.fontWeight="400";
+              div.style.textDecoration = "line-through";
+              div.style.lineHeight="20px";
+              div.style.color = "#f0f000";
+            }
+
+            function makeLess() {
+               var div = document.getElementById("ch1203");
+               div.style.fontSize="smaller";
+               div.style.letterSpacing="normal";
+               div.style.textAlign="left";
+               div.style.textTransform="none";
+               div.style.fontSize="medium";
+               div.style.fontWeight="normal";
+               div.style.lineHeight="normal";
+               div.style.color = "#0f00f0";
+            }
+
+            // chap 12 04 example codes
+            var element = ["ch1204div1","ch1204div2","ch1204div3"];
+
+            function next() {
+               setTimeout("moveBlock()",1000);
+            }
+
+            var x = 0;
+            var y = 0;
+            var elem = 0;
+            var step = 10;
+            function moveBlock() {
+                if (elem >= element.length) {
+                    console.log("oops no more elements");
+                    return;
+                }
+               x+=step;
+               y+=step;
+               var obj = document.getElementById(element[elem]);
+               obj.style.top = x + "px";
+               obj.style.left = y + "px";
+               if (x < (100 + elem * 60)) {
+                   setTimeout("moveBlock()", 100);
+               } else {
+                  elem++;
+                  x = 0; y = 0; 
+               } 
+            }
+
+           /// chap 12 05 example the most complicated exmaple in this book, so called.
+            // global variables
+            var dragObject  = null;
+            var mouseOffset = null;
+
+            // capture mouse events
+            document.onmousemove = mouseMove;
+            document.onmouseup   = mouseUp;
+
+            // create a mouse point
+            function mousePoint(x,y) {
+               this.x = x;
+               this.y = y;
+            }
+
+            // find mouse position
+            function mousePosition(evnt){
+              var x = parseInt(evnt.clientX); 
+              var y = parseInt(evnt.clientY); 
+              return new mousePoint(x,y);
+            }
+
+            // get element's offset position within page 
+            function getMouseOffset(target, evnt){
+               evnt = evnt || window.event;
+               var mousePos  = mousePosition(evnt);
+               var x = mousePos.x - target.offsetLeft;
+               var y = mousePos.y - target.offsetTop;
+               return new mousePoint(x,y);
+            }
+
+            // turn off dragging
+            function mouseUp(evnt){
+               if (dragObject) {
+                   dragObject.style.visibility = "hidden";
+               }
+               dragObject = null;
+            }
+
+            // capture mouse move, only if dragging
+            function mouseMove(evnt){
+               if (!dragObject) return;
+               evnt = evnt || window.event;
+               var mousePos = mousePosition(evnt);
+
+               // if draggable, set new absolute position
+               if(dragObject){
+                  dragObject.style.position = 'absolute';
+
+                  dragObject.style.top      = mousePos.y - mouseOffset.y + "px";
+                  dragObject.style.left     = mousePos.x - mouseOffset.x + "px";
+                  return false;
+                }
+            }
+
+            // make object draggable
+            function makeDraggable(item){
+               if (item) {
+                  item = document.getElementById(item);
+                  if (!item) {
+                      console.log("Oops cannot drag a null object!");
+                      return;
+                  }
+                  item.style.visibility = "visible";
+                  item.onmousedown = function(evnt) {
+                                     dragObject  = this;
+                                     mouseOffset = getMouseOffset(this, evnt);
+                                     return false; 
+                  };
+               }
+            }
+        
+            // chap 1206 example
+            function switchContent() {
+                var ch1206div1 = document.getElementById("ch1206div1").innerHTML;
+                var ch1206div2 = document.getElementById("ch1206div2").innerHTML;
+                document.getElementById("ch1206div1").innerHTML = ch1206div2;
+                document.getElementById("ch1206div2").innerHTML = ch1206div1;
+                document.getElementById("ch1206div3").innerHTML = ch1206div1;
+                console.log(document.getElementById("ch1206div3").offsetHeight);
+            }
+
+            // chap 12 07 example: drop-down animation
+            var bottom = 400;
+            var right = 400;
+            var hidden = false;
+            var obj = null;
+
+            function clipItem() {
+              obj = document.getElementById("ch1207data1");
+              if (hidden) {
+                   showItem();
+               } else {
+                   hideItem();
+               }
+            }
+
+            function hideItem() {
+               bottom-=step;
+               right -= step;
+               var clip = "rect(0px, " + right + "px," + bottom + "px,0px)";
+               obj.style.clip = clip;
+               var ch1207h3 = document.getElementById("ch1207h3");
+               var height = getStyle(ch1207h3, "height", "height");
+               console.log("height of h3 is " + height);
+               if (!height) {
+                   // this is just an guess, we are unable to known exact height of the h3 item
+                   height = 30;
+               } else {
+                   height = height.substring(0, height.length-2);
+                   console.log(height);
+               }
+               if (bottom <= height) {
+                  hidden=true;
+               } else {
+                  setTimeout("hideItem()",100);
+               }
+            }
+
+            function showItem() {
+               bottom+=step;
+               right += step;
+               var clip = "rect(0px, " + right + "px," + bottom + "px,0px)";
+               obj.style.clip=clip;
+               var height = getStyle(ch1207data1, "height", "height");
+               console.log("height of data1 is " + height);
+               if (!height) {
+                   // this is just an guess, we are unable to known exact height of the data1 item
+                   height = 400;
+               } else {
+                   height = height.substring(0, height.length - 2);
+               }
+               if (bottom >= height) {
+                  hidden=false;
+               } else {
+                  setTimeout("showItem()",100);
+               }
+            }
+
+            // chap 12 08 example 
+            var item = null;
+            function showHelp(newItem) {
+                if (item) {
+                    item.style.visibility = "hidden";
+                }
+                item = document.getElementById(newItem);
+                item.style.visibility = "visible";
+            }
+
+            // chap 12 09 example collapse form
+            function setup() {
+               document.getElementById('ch1209one').style.display='none';
+               document.getElementById('ch1209two').style.display='none';
+            }
+
+            function show(newItem) {
+               var item = document.getElementById(newItem);
+               if (item.style.display=='none') {
+                   item.style.display='block';
+               } else {
+                   item.style.display='none';
+               }
+            }
+       </script>
+   </head>
+   <body>
+       <!-- chap 12 01 example -->
+       <div id="chap1201">
+           <p>Hello CSS</p>
+       </div>
+       <!-- chap 12 02 example change elements style and get elements style -->
+       <a href="javascript:changeElement();">Change elements style</a>
+       <div id="ch1202div"><p>This is a DIV element</p></div>
+       <!-- chap 12 03 example -->
+        <p> <a href="javascript:makeMore();">Make it more</a> <a href="javascript:makeLess();">Make it less</a> </p>
+        <div id="ch1203">
+            <p> One of the first presentation specific HTML elements was Font, and also one of the older HTML elements you still find, all too frequently, in web pages. It's not surprising that font and text properties were of such interest in building web pages. Few changes you can make to an element's style attributes can have such an effect as changing the text or font properties. </p>
+            <p> Notice I say text or font properties. The font has to do with the characters themselves: their family, size, type, and other elements of the appearance of the characters. The text attributes, though, have more to do with decoration attached to the text and includes text decoration, alignment, and so on.</p> 
+        </div>
+       <!-- chap 12 03 example -->
+        <p> <a href="javascript:next();">Next slide</a> </p>
+        <div id="ch1204div1"> Now is the time for all good wo-men to come to the aid of their country.  </div>
+        <div id="ch1204div2"> 99 bottles of beer on the wall, 99 bottles of beer.<br /> Take one down, pass it around, 98 bottles of beer one...  </div>
+        <div id="ch1204div3"> web 2.0 WEB 2.0 WeB 2222....0000<br /> I'm so cool, 
+            <h2>Learning JavaScript!</h2>
+        </div>
+
+        <!-- chap 12 05 example: drag and move -->
+        <p><a href="javascript:makeDraggable('ch1205div1');">Make draggable</a></p>
+        <div id="ch1205div1"><img id="ch1205img" src="./learn-javascript-examples/fig01-1.jpg" width="400px" height="200px"/></div>
+        <!-- chap 12 06 example: switching contents -->
+        <p> <a href="javascript:switchContent();">Switch</a> </p>
+        <div id="ch1206div1">
+            <p> One of the first presentation specific HTML elements was Font, and also one of the older HTML elements you still find, all too frequently, in web pages. It's not surprising that font and text properties were of such interest in building web pages. Few changes you can make to an element's style attributes can have such an effect as changing the text or font properties. </p>
+            <p> Notice I say text or font properties. The font has to do with the characters themselves: their family, size, type, and other elements of the appearance of the characters. The text attributes, though, have more to do with decoration attached to the text and includes text decoration, alignment, and so on.</p> 
+        </div>
+        <div id="ch1206div2"> <p>Smaller item.</p> </div>
+        <div id="ch1206div3"> </div>
+        <!-- chap 12 07 example drop-down animation -->
+        <div id="ch1207data1">
+            <h3 id="ch1207h3" onclick="clipItem();">Click to expand or collapse</h3>
+            <div id="ch1207contained">This is the text contained within the div block.</div>
+        </div>
+        <!-- chap 12 08 example show help -->
+        <form id="ch1208form">
+            <label><a href="javascript:showHelp('ch1208item1')" alt="get help">Item One</a></label>
+            <input type="text"><br /><br />
+            <label><a href="javascript:showHelp('ch1208item2')" alt="get help">Item Two</a></label>
+            <input type="text">
+        </form>
+        <div id="ch1208item1" class="help"> This is the help for the first item. It only shows when you click on the label for the item.  </div>
+        <div id="ch1208item2" class="help"> This is the help for the second item. It only shows when you click on the label for the item.  </div>
+        <!-- chap 12 09 collapse form -->
+        <a href="javascript:setup();">Setup for chap 12 09 example</a>
+        <form action="GET" id="ch1209form">
+            <div class="label" onclick="show('ch1209one')"> <a href="#name" onclick="return false">Name</a> </div>
+            <div class="elements" id="ch1209one">
+                <label>First Name:</label><br /><input type="text" name="firstname" /><br /><br />
+                <label>Last Name:</label><br /><input type="text" name="lastname" /><br /><br />
+            </div>
+            <div class="label" onclick="show('ch1209two')"> <a href="#address" onclick="return false">Address</a> </div>
+            <div class="elements" id="ch1209two">
+                <label>Street Address:</label><br /><input type="text" name="street" /><br /><br />
+                <label>City:</label><br /><input type="text" name="city" /><br /><br />
+                <label>State:</label><br /><input type="text" name="state" /><br /><br />
+            </div>
+        </form>
+        <p>Other data or information.</p>
+        <!-- chap 10 example 10, change the doc -->
+        <p><a href="javascript:changeDoc();">Change the doc</a></p>
+        <div id="ch1010div1">
+            <h1 id="ch1010hdr1">Header</h1>
+            <!-- paragraph one -->
+            <p id="ch1010p1">To better understand the document tree, consider a web page that has a head and body section, has a page title, and contains a DIV element that itself contains a H1 header and two paragraphs. One of the paragraphs contains <i>italicized text</i>, the other an image--not an uncommon web page.</p>
+        </div>
+        <!-- paragraph two -->
+        <p id="ch1010p2">Second paragraph with image. <img id="ch1010img1" src="./learn-javascript-examples/dotty.gif" alt="dotty" /></p>
+        <hr />
+        <!-- chap 10 04 example accessing node properties -->
+        <div id="ch1004div1">
+            <p>Example chap 10 04: access node properties</p>
+            <p><a href="javascript:outputNodeProps(document);">Output document node properties</a></p>
+            <p><a href="javascript:outputNodeProperties('ch1004div1');">Output this node properties</a></p>
+            <h1>Header</h1>
+            <!-- paragraph one -->
+            <p>To better understand the document tree, consider a web page that has a head and body section, has a page title, and contains a DIV element that itself contains a H1 header and two paragraphs. One of the paragraphs contains <i>italicized text</i>, the other an image--not an uncommon web page.</p>
+            <!-- paragraph two -->
+            <p>Second paragraph with image following.</p>
+            <img src="./learn-javascript-examples/dotty.gif" alt="dotty" />
+        </div>
+        <hr />
+        <!-- example chap 10 07 -->
+        <p>Example chap 10 07: traversing the doc with node</p>
+        <p><a href="javascript:printTags(0, document);">Traverse the Doc with Node</a></p>
+        <hr />
+        <p>Example 09 14 modifying element</p>
+        <p><a href="javascript:changeDiv();">change the div element</a></p>
+        <div id="ch0914elem1"> <p>Paragraph text.</p> </div>
+        <div>
+            <ul id="ch0914elem2">
+                <li>option 1</li>
+                <li>option 2</li>
+            </ul>
+        </div>
+        <div><a href="./learn-javascript-examples/ch09-12.html" id="ch0914elem3">Example 9-12</a></div>
+        <hr />
+        <p>Example chap 09 04 change image via Timers </p>
+        <p><a href="javascript:setTimeout('progress()');">change the image</a></p>
+        <img id="ch0904img" src="./learn-javascript-examples/mad.gif" />
+   </body>
+</html>

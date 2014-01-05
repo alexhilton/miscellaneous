@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="MidiMusicApp" default="run">
+	<property name="src" value="src"/>
+	<property name="bin" value="bin"/>
+	<property name="jar-file" value="midi.jar"/>
+	<target name="init">
+		<mkdir dir="${src}"/>
+		<mkdir dir="${bin}"/>
+	</target>
+	<target name="compile" depends="init">
+		<javac srcdir="${src}" destdir="${bin}"/>
+	</target>
+	<target name="build" depends="compile">
+		<jar jarfile="${jar-file}" basedir="${bin}"/>
+	</target>
+	<target name="run" depends="build">
+		<java classname="MiniMiniMusicApp" classpath="${bin}"/>
+	</target>
+	<target name="clean" depends="init, compile, build">
+		<delete dir="${bin}"/>
+		<delete file="${jar-file}"/>
+	</target>
+</project>

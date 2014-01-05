@@ -1,0 +1,35 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: circle - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\ALEXHI~1\LOCALS~1\Temp\RSP121.tmp" with contents
+[
+/nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /Fp"Debug/circle.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ  /c 
+"H:\work\opengl\circle\circle.c"
+]
+Creating command line "cl.exe @C:\DOCUME~1\ALEXHI~1\LOCALS~1\Temp\RSP121.tmp" 
+<h3>Output Window</h3>
+Compiling...
+circle.c
+H:\work\opengl\circle\circle.c(19) : error C2143: syntax error : missing ';' before 'const'
+H:\work\opengl\circle\circle.c(20) : error C2275: 'GLfloat' : illegal use of this type as an expression
+        c:\program files\microsoft visual studio\vc98\include\gl\gl.h(53) : see declaration of 'GLfloat'
+H:\work\opengl\circle\circle.c(20) : error C2146: syntax error : missing ';' before identifier 'theta'
+H:\work\opengl\circle\circle.c(20) : error C2065: 'theta' : undeclared identifier
+H:\work\opengl\circle\circle.c(21) : error C2143: syntax error : missing ';' before 'const'
+H:\work\opengl\circle\circle.c(23) : error C2065: 'PI' : undeclared identifier
+H:\work\opengl\circle\circle.c(24) : error C2065: 'radius' : undeclared identifier
+H:\work\opengl\circle\circle.c(57) : warning C4113: 'void (__cdecl *)()' differs in parameter lists from 'void (__cdecl *)(void )'
+Error executing cl.exe.
+
+
+
+<h3>Results</h3>
+circle.obj - 7 error(s), 1 warning(s)
+</pre>
+</body>
+</html>

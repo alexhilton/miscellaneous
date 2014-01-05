@@ -1,0 +1,33 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.7	//
+Data	editor.c	/^} Data;$/;"	t	typeref:struct:__anon1	file:
+OPTION_CANCEL	editor.c	/^enum { OPTION_CANCEL = 0x00, OPTION_DISCARD = 0x01, OPTION_SAVE = 0x02,$/;"	e	enum:__anon2	file:
+OPTION_DISCARD	editor.c	/^enum { OPTION_CANCEL = 0x00, OPTION_DISCARD = 0x01, OPTION_SAVE = 0x02,$/;"	e	enum:__anon2	file:
+OPTION_NEXT_MATCH	editor.c	/^       OPTION_NEXT_MATCH = 0x03 };$/;"	e	enum:__anon2	file:
+OPTION_SAVE	editor.c	/^enum { OPTION_CANCEL = 0x00, OPTION_DISCARD = 0x01, OPTION_SAVE = 0x02,$/;"	e	enum:__anon2	file:
+about_clicked	editor.c	/^static void about_clicked( GtkButton *about, Data *data ) {$/;"	f	file:
+before_exit	editor.c	/^static gboolean before_exit( GtkWindow *window, Data *data ) {$/;"	f	file:
+copy_clicked	editor.c	/^static void copy_clicked( GtkButton *copy, GtkTextView *textview ) {$/;"	f	file:
+cut_clicked	editor.c	/^static void cut_clicked( GtkButton *cut, Data *data ) {$/;"	f	file:
+do_save	editor.c	/^static gboolean do_save( GtkButton *save, Data *data ) {$/;"	f	file:
+do_search	editor.c	/^static gboolean do_search( const gchar *pattern, GtkTextIter *start, gboolean is_forward ) {$/;"	f	file:
+exit_clicked	editor.c	/^static void exit_clicked( GtkButton *exit, Data *data ) {$/;"	f	file:
+filename	editor.c	/^  const gchar *filename;$/;"	m	struct:__anon1	file:
+has_saved	editor.c	/^  gboolean has_saved;$/;"	m	struct:__anon1	file:
+help_clicked	editor.c	/^static void help_clicked( GtkButton *help, Data *data ) {$/;"	f	file:
+main	editor.c	/^int main( int argc, char **argv ) {$/;"	f
+new_clicked	editor.c	/^static void new_clicked( GtkButton *new, Data *data ) {$/;"	f	file:
+no_match	editor.c	/^static void no_match( GtkWindow *window, gpointer data ) {$/;"	f	file:
+open_clicked	editor.c	/^static void open_clicked( GtkButton *button_open, Data *data ) {$/;"	f	file:
+paste_clicked	editor.c	/^static void paste_clicked( GtkButton *paste, Data *data ) {$/;"	f	file:
+save	editor.c	/^  GtkButton *save;$/;"	m	struct:__anon1	file:
+save_clicked	editor.c	/^static void save_clicked( GtkButton *save, Data *data ) {$/;"	f	file:
+search_clicked	editor.c	/^static void search_clicked( GtkButton *search, Data *data ) {$/;"	f	file:
+text_changed	editor.c	/^static void text_changed( GtkTextView *textview, gchar *ch, Data *data ) {$/;"	f	file:
+textview	editor.c	/^  GtkTextView *textview;$/;"	m	struct:__anon1	file:
+window	editor.c	/^  GtkWindow *window;$/;"	m	struct:__anon1	file:
+window_close	editor.c	/^static gboolean window_close( GtkWindow *window, GdkEvent *event, gpointer data ) {$/;"	f	file:

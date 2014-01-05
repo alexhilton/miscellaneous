@@ -1,0 +1,218 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.2
+date	2009.11.12.02.19.16;	author alex;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2009.11.10.04.15.00;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@there are some problems when no command line arguments.
+@
+
+
+1.2
+log
+@Now it works as expected perfectly.
+@
+text
+@/*
+ * $Header: /home/alex/work/linux/project/cat/cat.c,v 1.1 2009/11/10 04:15:00 alex Exp alex $
+ * $Date: 2009/11/10 04:15:00 $
+ * $Author: alex $
+ * RCS id: $Id: cat.c,v 1.1 2009/11/10 04:15:00 alex Exp alex $
+ * cat.c
+ * 	Concatenate files to standard output
+ * 	Note: You cannot implement this program with unbuffered system calls.
+ * 	Because, when it comes to standard input and standard output, you are
+ * 	dead. You have to use standard input and output.
+ * $Revision: 1.1 $
+ * $Log: cat.c,v $
+ * Revision 1.1  2009/11/10 04:15:00  alex
+ * Initial revision
+ *
+ */
+#include <stdio.h>
+#include <getopt.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+
+enum { HELP = 0x01, VERSION = 0x02 };
+
+static struct option long_options[] = {
+  { "help", no_argument, NULL, 'h' },
+  { "version", no_argument, NULL, 'v' },
+  { NULL, 0, 0, 0 }
+};
+
+static char optstring[] = "hv";
+
+static void help();
+static void version();
+static int cat( int fd );
+
+int main( int argc, char **argv ) {
+  int option = 0;
+  char ch;
+  int cmdx;
+  while ( (ch = getopt_long( argc, argv, optstring, long_options, &cmdx )) != -1 ) {
+    switch ( ch ) {
+    case 'h':
+      option |= HELP;
+      break;
+    case 'v':
+      option |= VERSION;
+      break;
+    default:
+      fprintf( stderr, "Invalid option %c\n", ch );
+      break;
+    }
+  }
+
+  if ( (option & HELP) == HELP ) {
+    help();
+    return 0;
+  }
+  if ( (option & VERSION) == VERSION ) {
+    version();
+    return 0;
+  }
+
+  if ( argc == 1 ) {
+    /* No command line arguments, from stdin to stdout */
+    cat( STDIN_FILENO );
+    return 0;
+  }
+  int fd = STDIN_FILENO;
+  /*
+   * If there are options, cmdx will be positioned to the first arguments,
+   * If not, it will be the initialized value: 0. So we need to position it to
+   * arguments skipping argv[0] -- the program's name.
+   */
+  if ( cmdx == 0 ) {
+    cmdx++;
+  }
+  for ( ; cmdx < argc; cmdx++ ) {
+    if ( strcmp( argv[ cmdx ], "-" ) == 0 ) {
+      /* stands for standard input */
+      fd = STDIN_FILENO;
+    } else {
+      /* open the file */
+      if ( (fd = open( argv[ cmdx ], O_RDONLY, 0 )) < 0 ) {
+	fprintf( stderr, "open file '%s' failed: %s\n", argv[cmdx], strerror(errno) );
+	continue;
+      }
+    }
+    cat( fd );
+    if ( fd != STDIN_FILENO ) {
+      close( fd );
+    }
+  }
+  return 0;
+}
+
+static int cat( int fd ) {
+  char buffer[ 256 ];
+  size_t size;
+  while ( (size = read( fd, buffer, sizeof( buffer ) )) > 0 ) {
+    if ( write( STDOUT_FILENO, buffer, size ) != size ) {
+      fprintf( stderr, "error on write: %s\n", strerror( errno ) );
+      return -1;
+    }
+  }
+  if ( size < 0 ) {
+    fprintf( stderr, "error on read: %s\n", strerror( errno ) );
+    return -1;
+  }
+  return 0;
+}
+
+static void help() {
+  int fd;
+  char buf[ BUFSIZ ];
+  size_t size;
+  if ( (fd = open( "help.txt", O_RDONLY, 0 )) < 0 ) {
+    fprintf( stderr, "open 'help.txt' error: %s\n", strerror( errno ) );
+    return;
+  }
+  while ( (size = read( fd, buf, sizeof( buf ) )) > 0 ) {
+    if ( size != write( STDOUT_FILENO, buf, size ) ) {
+      fprintf( stderr, "write error: %s\n", strerror( errno ) );
+      return;
+    }
+  }
+  if ( size < 0 ) {
+    fprintf( stderr, "read error: %s\n", strerror( errno ) );
+    return;
+  }
+  close( fd );
+}
+
+static void version() {
+  printf( "cat: concatenate files to standard output\n"
+      "version 1.0\n"
+      "Copyright (c) Alex Hilton 2009.\n"
+      "This is a free, open source software under GPLv2\n"
+      "You are free to use, change and re-distribute withouth any warntary.\n"
+      "For more information about GPLv2, go to: http://www.gnu.org.\n" );
+}
+
+/* End $Source: /home/alex/work/linux/project/cat/cat.c,v $ */
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 4
+a5 4
+ * $Header$
+ * $Date$
+ * $Author$
+ * RCS id: $Id$
+d11 5
+a15 2
+ * $Revision$
+ * $Log$
+d36 1
+a36 1
+static int cat( FILE *in );
+d65 14
+a78 1
+  FILE *in = stdin;
+d82 1
+a82 1
+      in = stdin;
+d85 1
+a85 1
+      if ( (in = fopen( argv[ cmdx ], "r" )) == NULL ) {
+d90 3
+a92 3
+    cat( in );
+    if ( in != stdin ) {
+      fclose( in );
+d98 1
+a98 1
+static int cat( FILE *in ) {
+d100 10
+a109 2
+  while ( fgets( buffer, sizeof( buffer ), in ) != NULL ) {
+    fputs( buffer, stdout );
+d144 1
+a144 1
+/* End $Source$ */
+@

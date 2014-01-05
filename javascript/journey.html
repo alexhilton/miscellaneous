@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>The Journey of JavaScript</title>
+        <script type="text/javascript" src="journey.js"></script>
+    </head>
+    <body>
+        <h1>My First Heading</h1>
+        <p id="result">My first paragraph.</p>
+        <button onclick="calcFactor(10)">Factor me!</button>
+        <script type="text/javascript">
+            function calcFactor(num) {
+                var r = factor(num);
+                document.getElementById("result").innerHTML = r;
+            }
+        </script>
+        <a href="javascript:window.open()">Click here to open new window</a>
+        <a id="la" href="javascript:void(window.open())">different?</a>
+        <br/>
+        <button onclick="promptName()">Prompt name</button>
+        <script type="text/javascript">
+            function promptName() {
+                var name = prompt("Please enter your name");
+                alert(responseName(name));
+            }
+        </script>
+        <form style="background-color: #f00; width: 100px; height: 100px; padding: 10px">
+            <input type="submit" value="Submit" /><br/>
+        </form>
+    </body>
+</html>

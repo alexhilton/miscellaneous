@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project name="environ" default="run" basedir=".">
+	<property name="src" value="src"/>
+	<property name="bin" value="bin"/>
+	<property name="lib" value="lib"/>
+	<property name="jarfile" value="${lib}/environ.jar"/>
+	<target name="init">
+		<mkdir dir="${bin}"/>
+		<mkdir dir="${lib}"/>
+	</target>
+	<target name="compile" depends="init">
+		<javac srcdir="${src}" destdir="${bin}"/>
+	</target>
+	<target name="build" depends="compile">
+		<jar jarfile="${jarfile}" basedir="${bin}"/>
+	</target>
+	<target name="run" depends="build">
+		<java classname="EnvironmentTest" classpath="${bin}"/>
+	</target>
+	<target name="clean" depends="init, compile, build, run">
+		<delete dir="${bin}"/>
+	</target>
+</project>

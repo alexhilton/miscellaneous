@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+    <title>Bounce ball game</title>
+    <style type="text/css">
+        canvas {background-color: #643; padding: 0px}
+        input:valid {background: green;}
+        input:invalid {background: red;}
+    </style>
+    <head>
+        <script type="text/javascript">
+            var xstep = 2;
+            var ystep = 2;
+            var width;
+            var height;
+            var lineWidth = 15;
+            var px;
+            var py;
+            var radius = 10;
+            var leftBound;
+            var upBound;
+            var rightBound;
+            var bottomBound;
+            var nextFrame;
+            var style = 1;
+
+            function initialize() {
+                var hvElement = document.getElementById("hv");
+                if (!hvElement.value) {
+                    hvElement.value = xstep;
+                } else {
+                    xstep = new Number(hvElement.value).valueOf();
+                }
+                var vvElement = document.getElementById("vv");
+                if (!vvElement.value) {
+                    vvElement.value = ystep;
+                } else {
+                    ystep = new Number(vvElement.value).valueOf();
+                }
+                var canvas = document.getElementById("canvas")
+                width = canvas.width;
+                height = canvas.height;
+                px = width / 2;
+                py = height / 2;
+                leftBound = lineWidth;
+                upBound = lineWidth;
+                rightBound = width-lineWidth;
+                bottomBound = height-lineWidth;
+                // draw the border of this canvas
+                var ctx = canvas.getContext("2d");
+                drawSimpleWall(ctx);
+                drawBall(ctx, px, py);
+            }
+
+            function drawSimpleWall(ctx) {
+                ctx.clearRect(0, 0, width, height);
+                ctx.beginPath();
+                ctx.strokeStyle = "#123";
+                ctx.lineWidth = lineWidth;
+                // the middle of the line is drawn on the border defined by (x, y, w, h), so when there is a
+                // wider line, you should be cautious with the border, otherwise you get thinner lineWidth.
+                // starting x and starting y should minus half of lineWidth, and width and height should minus
+                // lineWidth.
+                ctx.strokeRect(lineWidth/2, lineWidth/2, width-lineWidth, height-lineWidth);
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            function drawGradWall(ctx) {
+                ctx.clearRect(0, 0, width, height);
+                var hue = ["#f00", "#ff0", "#0f0", "#00f", "#f0f"];
+                var grad = ctx.createLinearGradient(0, 0, width, height);
+                for (var i = 0; i < hue.length; i++) {
+                    grad.addColorStop(i*1/hue.length, hue[i]);
+                }
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, lineWidth, height);
+                ctx.fillRect(0, 0, width, lineWidth);
+                ctx.fillRect(0, height-lineWidth, width, lineWidth);
+                ctx.fillRect(width-lineWidth, 0, lineWidth, height);
+                // they are the same visual effect, who knows for others(performance?)
+                //ctx.fillRect(0, 0, width, height);
+                //ctx.clearRect(lineWidth, lineWidth, width-2*lineWidth, height-2*lineWidth);
+            }
+
+            function refreshBall() {
+                // incase user click refresh again before nextFrame fires
+                if (nextFrame) {
+                    clearInterval(nextFrame);
+                }
+                px += xstep;
+                py += ystep;
+                var ctx = document.getElementById("canvas").getContext("2d");
+                ctx.clearRect(leftBound, upBound, rightBound-lineWidth, bottomBound-lineWidth);
+                var cx = px;
+                var cy = py;
+                if (px-radius <= leftBound) {
+                    xstep *= -1;
+                    cx = leftBound + radius;
+                }
+                if (px+radius >= rightBound) {
+                    xstep *= -1;
+                    cx = rightBound - radius;
+                }
+                if (py-radius <= upBound) {
+                    ystep *= -1;
+                    cy = upBound + radius;
+                }
+                if (py+radius >= bottomBound) {
+                    ystep *= -1;
+                    cy = bottomBound - radius;
+                }
+                if (style == 1) {
+                    drawBall(ctx, cx, cy);
+                } else if (style == 2) {
+                    drawImage(ctx, cx, cy);
+                }
+                nextFrame = setInterval("refreshBall()", 100);
+            }
+    
+            function drawImage(ctx, x, y) {
+                var img = new Image();
+                img.src = "./learn-javascript-examples/mad.gif";
+                ctx.drawImage(img, x-radius, y-radius, 2*radius, 2*radius);
+            }
+
+            function drawBall(ctx, x, y) {
+                ctx.beginPath();
+                ctx.fillStyle = "#f00";
+                ctx.arc(x, y, radius, 0, 2*Math.PI, true);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            function stopBall() {
+                if (nextFrame) {
+                    clearInterval(nextFrame);
+                }
+            }
+
+            function vChanged(id) {
+                if (!id) {
+                    return;
+                }
+                var v = document.getElementById(id).value;
+                // The validation here MIGHT NOT be necessary any more, because for HTML5
+                // input can do validation by itself.
+                var digitsRegex = new RegExp("^-?[0-9]{1,3}$");
+                if (!digitsRegex.exec(v)) {
+                    document.getElementById("refresh").disabled = true;
+                    document.getElementById("stop").disabled = true;
+                    alert("Velocity \"" + v + "\" is not a valid number!");
+                } else {
+                    document.getElementById("refresh").disabled = false;
+                    document.getElementById("stop").disabled = false;
+                    xstep = new Number(document.getElementById("hv").value).valueOf();
+                    ystep = new Number(document.getElementById("vv").value).valueOf();
+                }
+            }
+
+            function changeStyle() {
+                var x;
+                var y;
+                // Make sure ball or image won't exceed boundary when changing style
+                if (px-radius <= leftBound) {
+                    x = leftBound + radius;
+                }
+                if (px+radius >= rightBound) {
+                    x = rightBound - radius;
+                }
+                if (py-radius <= upBound) {
+                    y = upBound + radius;
+                }
+                if (py+radius >= bottomBound) {
+                    y = bottomBound - radius;
+                }
+                var ctx = document.getElementById("canvas").getContext("2d");
+                if (style == 1) {
+                    style = 2;
+                    drawGradWall(ctx);
+                    drawImage(ctx, x, y);
+                } else if (style == 2) {
+                    style = 1;
+                    drawSimpleWall(ctx);
+                    drawBall(ctx, x, y);
+                }
+            }
+        </script>
+    </head>
+    <body onload="initialize();">
+        <canvas id="canvas" width="400px" height="300px">Update your browser to see this</canvas>
+        <form>
+            <label>Horizontal velocity:</label><input id="hv" type="number" onblur="vChanged('hv')" max="10" min="-10"/><br />
+            <label>Vertical velocity:</label><input id="vv" type="number" onblur="vChanged('vv')" max="10" min="-10"/><br/>
+        </form>
+        <button onclick="changeStyle();">CHANGE STYLE</button>
+        <button id="refresh" onclick="refreshBall();">REFRESH</button>
+        <button id="stop" onclick="stopBall();">STOP</button>
+    </body>
+</html>

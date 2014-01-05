@@ -1,0 +1,453 @@
+head	1.3;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.3
+date	2009.10.04.23.30.19;	author alex;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2009.10.04.05.49.07;	author alex;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2009.10.04.05.46.48;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@Initial version.
+@
+
+
+1.3
+log
+@Add close operation for main window.
+Now it implements all features.
+@
+text
+@/**
+ * $Header: /home/alex/work/gtk-work/gtk-examples/widget/infosheet.c,v 1.2 2009/10/04 05:49:07 alex Exp alex $
+ * $Author: alex $
+ * $Date: 2009/10/04 05:49:07 $
+ *
+ * infosheet.c
+ * Show you a sheet to enter your personal information including name, age,
+ * phone, weight, height, company and address.
+ * You can specify a directory and a filename to save your info.
+ * There is a reset button, when click it all entries are re-initialized.
+ * There is a save button, by clicking it, you can save all the info currently
+ * set into the file you designated.
+ * If no text entered, button save and button reset are disabled.
+ * If no save done, a dialog will be popped prompting you save the info before
+ * you leaning the program.
+ * $Revision: 1.2 $
+ * $Log: infosheet.c,v $
+ * Revision 1.2  2009/10/04 05:49:07  alex
+ * Add RCS Key tags.
+ *
+ */
+#include <gtk/gtk.h>
+#include <string.h>
+#include <errno.h>
+
+static const char rcs_id[] = "$Id: infosheet.c,v 1.2 2009/10/04 05:49:07 alex Exp alex $";
+
+/* response of quit prompt dialog */
+enum { OPTION_CANCEL = 0x00, OPTION_DISCARD = 0x01, OPTION_SAVE = 0x02 };
+
+/* Info struture holding a person's information */
+typedef struct {
+  const char *name;
+  int age;
+  const char *phone;
+  const char *weight;
+  const char *height;
+  const char *company;
+  const char *address;
+} Info;
+
+typedef struct {
+  Info *info;
+  GtkWidget *entry_name;
+  GtkWidget *entry_phone;
+  GtkWidget *spin_age;
+  GtkWidget *entry_weight;
+  GtkWidget *entry_height;
+  GtkWidget *entry_company;
+  GtkWidget *entry_address;
+  GtkWidget *entry_file;
+  GtkWidget *chooser_path;
+  GtkWidget *button_save;
+  GtkWidget *button_reset;
+  GtkWidget *window;
+  gboolean not_saved;
+} Data;
+
+/* Event handlers for each widget */
+static void save_clicked( GtkWidget *button, Data *data );
+static void reset_clicked( GtkWidget *button, Data *data );
+static gboolean before_exiting( GtkWidget *button, Data *data );
+static void name_entered( GtkEntry *entry, Data *data );
+static void phone_entered( GtkEntry *entry, Data *data );
+static void weight_entered( GtkEntry *entry, Data *data );
+static void height_entered( GtkEntry *entry, Data *data );
+static void company_entered( GtkEntry *entry, Data *data );
+static void address_entered( GtkEntry *entry, Data *data );
+static void age_spinned( GtkSpinButton *button, Data *data );
+static void cancel_clicked( GtkWidget *button, Data *data );
+static gboolean window_close( GtkWidget *widget, GdkEvent *event, gpointer pointer );
+
+/* main program */
+int main( int argc, char **argv ) {
+  gtk_init( &argc, &argv );
+
+  /* create the main window */
+  GtkWidget *window = gtk_window_new( GTK_WINDOW_TOPLEVEL );
+  gtk_container_set_border_width( GTK_CONTAINER( window ), 20 );
+  gtk_widget_set_size_request( window, 480, 640 );
+  gtk_window_set_title( GTK_WINDOW( window ), "Personal Information Sheet" );
+
+  /* Create labels working as tips for users */
+  GtkWidget *label_name = gtk_label_new( "Name: " );
+  GtkWidget *label_age = gtk_label_new( "Age: " );
+  GtkWidget *label_phone = gtk_label_new( "Phone: " );
+  GtkWidget *label_weight = gtk_label_new( "Weight: " );
+  GtkWidget *label_height = gtk_label_new( "Height: " );
+  GtkWidget *label_company = gtk_label_new( "Company: " );
+  GtkWidget *label_address = gtk_label_new( "Address: " );
+  GtkWidget *label_path = gtk_label_new( "File Path: " );
+  GtkWidget *label_file = gtk_label_new( "File Name: " );
+
+  /* create entries used to recieve user's info */
+  GtkWidget *entry_name = gtk_entry_new();
+  GtkWidget *spin_age = gtk_spin_button_new_with_range( 0, 100, 1 );
+  gtk_spin_button_set_digits( GTK_SPIN_BUTTON( spin_age ), 0 );
+  GtkWidget *entry_phone = gtk_entry_new();
+  GtkWidget *entry_weight = gtk_entry_new();
+  GtkWidget *entry_height = gtk_entry_new();
+  GtkWidget *entry_company = gtk_entry_new();
+  GtkWidget *entry_address = gtk_entry_new();
+  GtkWidget *entry_file = gtk_entry_new();
+  GtkWidget *chooser_path = gtk_file_chooser_button_new( "Select a path",
+      GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER );
+  GtkWidget *button_save = gtk_button_new_with_mnemonic( "_Save" );
+  GtkWidget *button_cancel = gtk_button_new_with_mnemonic( "_Cancel" );
+  GtkWidget *button_reset = gtk_button_new_with_mnemonic( "_Reset" );
+
+  /* Do some initializations */
+  gtk_widget_set_sensitive( button_save, FALSE );
+  gtk_widget_set_sensitive( button_reset, FALSE );
+  Info info;
+  Data data;
+  data.info = &info;
+  data.entry_name = entry_name;
+  data.spin_age = spin_age;
+  data.entry_phone = entry_phone;
+  data.entry_weight = entry_weight;
+  data.entry_height = entry_height;
+  data.entry_company = entry_company;
+  data.entry_address = entry_address;
+  data.chooser_path = chooser_path;
+  data.entry_file = entry_file;
+  data.button_reset = button_reset;
+  data.button_save = button_save;
+  data.not_saved = FALSE;
+  data.window = window;
+
+  /* Now organize and arrange all the widgets and show them on main window */
+  GtkWidget *hbox_name = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_name ), label_name, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_name ), entry_name, TRUE, TRUE, 10 );
+  GtkWidget *hbox_age = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_age ), label_age, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_age ), spin_age, TRUE, TRUE, 10 );
+  GtkWidget *hbox_phone = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_phone ), label_phone, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_phone ), entry_phone, TRUE, TRUE, 10 );
+  GtkWidget *hbox_weight = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_weight ), label_weight, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_weight ), entry_weight, TRUE, TRUE, 10 );
+  GtkWidget *hbox_height = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_height ), label_height, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_height ), entry_height, TRUE, TRUE, 10 );
+  GtkWidget *hbox_company = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_company ), label_company, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_company ), entry_company, TRUE, TRUE, 10 );
+  GtkWidget *hbox_address = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_address ), label_address, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_address ), entry_address, TRUE, TRUE, 10 );
+  GtkWidget *hbox_file = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_file ), label_file, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_file ), entry_file, TRUE, TRUE, 10 );
+  GtkWidget *hbox_path = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_path ), label_path, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox_path ), chooser_path, TRUE, TRUE, 10 );
+  GtkWidget *hbox_button = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_end( GTK_BOX( hbox_button ), button_save, TRUE, TRUE, 10 );
+  gtk_box_pack_end( GTK_BOX( hbox_button ), button_reset, TRUE, TRUE, 10 );
+  gtk_box_pack_end( GTK_BOX( hbox_button ), button_cancel, TRUE, TRUE, 10 );
+
+  GtkWidget *vbox = gtk_vbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_name, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_age, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_phone, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_weight, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_height, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_company, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_address, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_path, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_file, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), hbox_button, FALSE, FALSE, 10 );
+
+  /* connecting signals and its handlers */
+  g_signal_connect( G_OBJECT( window ), "delete_event", G_CALLBACK( window_close ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( entry_name ), "changed", G_CALLBACK( name_entered ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( entry_phone ), "changed", G_CALLBACK( phone_entered ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( entry_weight ), "changed", G_CALLBACK( weight_entered ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( entry_height ), "changed", G_CALLBACK( height_entered ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( entry_company ), "changed", G_CALLBACK( company_entered ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( entry_address ), "changed", G_CALLBACK( address_entered ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( button_save ), "clicked", G_CALLBACK( save_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( button_reset ), "clicked", G_CALLBACK( reset_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( button_cancel ), "clicked", G_CALLBACK( cancel_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( spin_age ), "changed", G_CALLBACK( age_spinned ), (gpointer) &data );
+
+  /* add those widgets onto main window and show them */
+  gtk_container_add( GTK_CONTAINER( window ), vbox );
+  gtk_widget_show_all( window );
+  gtk_main();
+  return 0;
+}
+
+static void name_entered( GtkEntry *entry, Data *data ) {
+  data->info->name = gtk_entry_get_text( entry );
+  gboolean enabled = strlen( data->info->name ) > 0;
+  data->not_saved = ( data->not_saved || enabled );
+  gboolean status_save, status_reset;
+  g_object_get( data->button_reset, "sensitive", &status_reset, NULL );
+  g_object_get( data->button_save, "sensitive", &status_save, NULL );
+  enabled = ( enabled || status_save || status_reset );
+  gtk_widget_set_sensitive( data->button_save, enabled );
+  gtk_widget_set_sensitive( data->button_reset, enabled );
+}
+
+static void phone_entered( GtkEntry *entry, Data *data ) {
+  data->info->phone = gtk_entry_get_text( entry );
+  gboolean enabled = strlen( data->info->phone ) > 0;
+  data->not_saved = ( data->not_saved || enabled );
+  gboolean status_save, status_reset;
+  g_object_get( data->button_reset, "sensitive", &status_reset, NULL );
+  g_object_get( data->button_save, "sensitive", &status_save, NULL );
+  enabled = ( enabled || status_save || status_reset );
+  gtk_widget_set_sensitive( data->button_save, enabled );
+  gtk_widget_set_sensitive( data->button_reset, enabled );
+}
+
+static void weight_entered( GtkEntry *entry, Data *data ) {
+  data->info->weight = gtk_entry_get_text( entry );
+  gboolean enabled = strlen( data->info->weight ) > 0;
+  data->not_saved = ( data->not_saved || enabled );
+  gboolean status_save, status_reset;
+  g_object_get( data->button_reset, "sensitive", &status_reset, NULL );
+  g_object_get( data->button_save, "sensitive", &status_save, NULL );
+  enabled = ( enabled || status_save || status_reset );
+  gtk_widget_set_sensitive( data->button_save, enabled );
+  gtk_widget_set_sensitive( data->button_reset, enabled );
+}
+
+static void height_entered( GtkEntry *entry, Data *data ) {
+  data->info->height = gtk_entry_get_text( entry );
+  gboolean enabled = strlen( data->info->height ) > 0;
+  data->not_saved = ( data->not_saved || enabled );
+  gboolean status_save, status_reset;
+  g_object_get( data->button_reset, "sensitive", &status_reset, NULL );
+  g_object_get( data->button_save, "sensitive", &status_save, NULL );
+  enabled = ( enabled || status_save || status_reset );
+  gtk_widget_set_sensitive( data->button_save, enabled );
+  gtk_widget_set_sensitive( data->button_reset, enabled );
+}
+
+static void company_entered( GtkEntry *entry, Data *data ) {
+  data->info->company = gtk_entry_get_text( entry );
+  gboolean enabled = strlen( data->info->company ) > 0;
+  data->not_saved = ( data->not_saved || enabled );
+  gboolean status_save, status_reset;
+  g_object_get( data->button_reset, "sensitive", &status_reset, NULL );
+  g_object_get( data->button_save, "sensitive", &status_save, NULL );
+  enabled = ( enabled || status_save || status_reset );
+  gtk_widget_set_sensitive( data->button_save, enabled );
+  gtk_widget_set_sensitive( data->button_reset, enabled );
+}
+
+static void address_entered( GtkEntry *entry, Data *data ) {
+  data->info->address = gtk_entry_get_text( entry );
+  gboolean enabled = strlen( data->info->address ) > 0;
+  data->not_saved = ( data->not_saved || enabled );
+  gboolean status_save, status_reset;
+  g_object_get( data->button_reset, "sensitive", &status_reset, NULL );
+  g_object_get( data->button_save, "sensitive", &status_save, NULL );
+  enabled = ( enabled || status_save || status_reset );
+  gtk_widget_set_sensitive( data->button_save, enabled );
+  gtk_widget_set_sensitive( data->button_reset, enabled );
+}
+
+static void age_spinned( GtkSpinButton *button, Data *data ) {
+  data->info->age = gtk_spin_button_get_value( button );
+  gboolean enabled = data->info->age > 0;
+  data->not_saved = ( data->not_saved || enabled );
+  gboolean status_save, status_reset;
+  g_object_get( data->button_reset, "sensitive", &status_reset, NULL );
+  g_object_get( data->button_save, "sensitive", &status_save, NULL );
+  enabled = ( enabled || status_save || status_reset );
+  gtk_widget_set_sensitive( data->button_save, enabled );
+  gtk_widget_set_sensitive( data->button_reset, enabled );
+}
+
+static void reset_clicked( GtkWidget *button, Data *data ) {
+  gtk_entry_set_text( GTK_ENTRY( data->entry_name ), "" );
+  gtk_spin_button_set_value( GTK_SPIN_BUTTON( data->spin_age ), 0 );
+  gtk_entry_set_text( GTK_ENTRY( data->entry_phone ), "" );
+  gtk_entry_set_text( GTK_ENTRY( data->entry_weight ), "" );
+  gtk_entry_set_text( GTK_ENTRY( data->entry_height ), "" );
+  gtk_entry_set_text( GTK_ENTRY( data->entry_company ), "" );
+  gtk_entry_set_text( GTK_ENTRY( data->entry_address ), "" );
+  gtk_entry_set_text( GTK_ENTRY( data->entry_file ), "" );
+  gtk_widget_set_sensitive( data->button_save, FALSE );
+  gtk_widget_set_sensitive( data->button_reset, FALSE );
+  data->not_saved = FALSE;
+}
+
+static void save_clicked( GtkWidget *button, Data *data ) {
+  char *default_name = "info.txt";
+  const char *filename = gtk_entry_get_text( GTK_ENTRY( data->entry_file ) );
+  const char *path = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER( data->chooser_path ) );
+  char fullname[ 256 ];
+  strcpy( fullname, path );
+  strcat( fullname, "/" );
+  filename = (strlen(filename) > 0) ? filename : default_name;
+  strcat( fullname, filename );
+
+  FILE *fp;
+  if ( (fp = fopen( fullname, "w" )) == NULL ) {
+    fprintf( stderr, "cannot open file %s: %s\n", fullname, strerror( errno ) );
+    return;
+  }
+
+  /* retrieve the info from widgets */
+  data->info->name = gtk_entry_get_text( GTK_ENTRY( data->entry_name ) );
+  data->info->age = gtk_spin_button_get_value( GTK_SPIN_BUTTON( data->spin_age ) );
+  data->info->phone = gtk_entry_get_text( GTK_ENTRY( data->entry_phone ) );
+  data->info->weight = gtk_entry_get_text( GTK_ENTRY( data->entry_weight ) );
+  data->info->height = gtk_entry_get_text( GTK_ENTRY( data->entry_height ) );
+  data->info->company = gtk_entry_get_text( GTK_ENTRY( data->entry_company ) );
+  data->info->address = gtk_entry_get_text( GTK_ENTRY( data->entry_address ) );
+
+  fprintf( fp, "Name=%s\nAge=%d\nPhone=%s\nWeight=%s\nHeight=%s\nCompany=%s\nAddress=%s\n",
+      data->info->name,
+      data->info->age,
+      data->info->phone,
+      data->info->weight,
+      data->info->height,
+      data->info->company,
+      data->info->address );
+  fclose( fp );
+  data->not_saved = FALSE;
+  gtk_widget_set_sensitive( data->button_save, FALSE );
+}
+
+static void cancel_clicked( GtkWidget *button, Data *data ) {
+  before_exiting( button, data );
+}
+
+static gboolean before_exiting( GtkWidget *button, Data *data ) {
+  if ( data->not_saved ) {
+    /* prompt use to save the text */
+    GtkWidget *dialog = gtk_dialog_new_with_buttons( "Information", GTK_WINDOW( data->window ),
+	GTK_DIALOG_MODAL, "Cancel", OPTION_CANCEL, "Discard", OPTION_DISCARD, "Save",
+	OPTION_SAVE, NULL );
+    gtk_dialog_set_has_separator( GTK_DIALOG( dialog ), TRUE );
+    GtkWidget *label = gtk_label_new( "The information has not been saved. Do you want to save it \
+	before exiting?" );
+    GtkWidget *image = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+	GTK_ICON_SIZE_DIALOG );
+
+    /* organize and arrange widgets on dialog */
+    GtkWidget *hbox = gtk_hbox_new( FALSE, 5 );
+    gtk_container_set_border_width( GTK_CONTAINER( hbox ), 10 );
+    gtk_box_pack_start( GTK_BOX( hbox ), image, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( hbox ), label, FALSE, FALSE, 10 );
+    gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog)->vbox ), hbox, FALSE, FALSE, 10 );
+    gtk_widget_show_all( dialog );
+
+    int result; /* result of running dialog according to different clicking of user */
+    result = gtk_dialog_run( GTK_DIALOG( dialog ) );
+    switch ( result ) {
+    case OPTION_SAVE:
+      save_clicked( button, data );
+      gtk_main_quit();
+      return FALSE;
+    case OPTION_DISCARD:
+      gtk_main_quit();
+      return FALSE;
+    default:
+      break;
+    }
+    gtk_widget_destroy( dialog );
+    return TRUE;
+  } else {
+    gtk_main_quit();
+    return FALSE;
+  }
+}
+
+static gboolean window_close( GtkWidget *widget, GdkEvent *event, gpointer data ) {
+  return before_exiting( widget, (Data *) data );
+}
+/* End $Source: /home/alex/work/gtk-work/gtk-examples/widget/infosheet.c,v $ */
+@
+
+
+1.2
+log
+@Add RCS Key tags.
+@
+text
+@d2 3
+a4 3
+ * $Header$
+ * $Author$
+ * $Date$
+d16 5
+a20 2
+ * $Revision$
+ * $Log$
+d26 1
+a26 1
+static const char rcs_id[] = "$Id$";
+d71 1
+d176 1
+a176 1
+  g_signal_connect( G_OBJECT( window ), "delete_event", G_CALLBACK( before_exiting ), (gpointer) &data );
+d376 4
+a379 1
+/* End $Source$ */
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 4
+d16 2
+d23 2
+d371 2
+@

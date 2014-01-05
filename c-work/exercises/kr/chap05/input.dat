@@ -1,0 +1,14 @@
+char **argv
+int (*daytab)[13]
+int *daytab[13]
+void *comp()
+void (*comp)()
+char (*(*x())[])()
+char (*(*x[3])())[5]
+char *(*comp)(int *, char *, int (*fnt)())
+char (*comp)( const int *, const int * )
+const double *p
+volatile float *arr[3]
+auto double *(*arr[3])(const float *, const float *)
+static float (*comp)(const double *, const double *)
+char *(*qsort)( const char *, const int, int (*comp)(const char *, const char *) )

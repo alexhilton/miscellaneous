@@ -1,0 +1,332 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.2
+date	2010.01.24.03.11.50;	author alex;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2010.01.23.17.00.04;	author alex;	state Exp;
+branches;
+next	;
+
+
+desc
+@Initial version.
+Win dialog cannot show, race label cannot show, new game is to finish.
+@
+
+
+1.2
+log
+@Nothing changed.
+A lot of work to be done:
+The reason that we don't have animation on label is that we cannot refresh the window, the increments are there, but GUI does not redraw them, so we need to refresh the window manually.
+The arguments cannot be set now.
+The new game button cannot be used now.
+The dialog showing who wins cannot be shown.
+We need to write a score management system to record and report player's scoring.
+@
+text
+@/*
+ * $Header: /home/alex/work/gtk-work/gtk-examples/widget/horserace.c,v 1.1 2010/01/23 17:00:04 alex Exp alex $
+ * $Author: alex $
+ * $Date: 2010/01/23 17:00:04 $
+ * RCS id: $Id: horserace.c,v 1.1 2010/01/23 17:00:04 alex Exp alex $
+ * A simulation to horse race
+ * We use ten thread to simulate ten race horses and a thread to be the game.
+ * The main thread is responsible for setting arguments.
+ * $Revision: 1.1 $
+ * $Log: horserace.c,v $
+ * Revision 1.1  2010/01/23 17:00:04  alex
+ * Initial revision
+ *
+ */
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <gtk/gtk.h>
+
+#define FINISH_LINE 70
+#define STEP (rand() % 3)
+#define HORSE_NUM 7
+#define HEADER 11
+#define TRACK_LENGTH (FINISH_LINE+HEADER+2)
+#define TRACK_WIDTH (HORSE_NUM+2)
+
+typedef struct {
+  GtkWidget *window;
+  GtkWidget *spin;
+  GtkWidget *entry;
+  GtkWidget *label;
+  int won_id;
+} Data;
+
+static char track[ TRACK_WIDTH ][ TRACK_LENGTH ];
+static int over = 0;
+
+static void  *race( void *d );
+static void refreshTrack();
+static void printTrack( Data *data );
+static void exit_prog_clicked( GtkWidget *button, Data *data );
+static void new_game_clicked( GtkWidget *button, Data *data );
+static void start_game_clicked( GtkWidget *button, Data *data );
+static void buildGUI( int argc, char **argv );
+static gboolean before_exit( GtkWindow *window, gpointer data );
+static void *win_dialog( void *d );
+
+/* Launch program, build gui */
+int main( int argc, char **argv ) {
+  buildGUI( argc, argv );
+  return 0;
+}
+
+static void new_game_clicked( GtkWidget *button, Data *data ) {
+}
+
+static void start_game_clicked( GtkWidget *button, Data *data ) {
+  pthread_t id;
+  pthread_create( &id, NULL, race, (void *) data );
+}
+
+/*
+ * race
+ * The central idea is increment each horse's track by a random step for each
+ * horse until one of them reaches the finishing line --- the winner of this
+ * race.
+ * To reach simulation, we clear the track, then mark the position, then print
+ * the whole track. This is a series refreshing, incrementing and printing, so
+ * you would see horses are running.
+ */
+static void *race( void *d ) {
+  Data *data = (Data *) d;
+  int id;
+  int progress[ HORSE_NUM ];
+  memset( progress, 0, sizeof( progress ) );
+  while ( !over ) {
+    refreshTrack();
+
+    /* Making increments */
+    for ( id = 0; id < HORSE_NUM; id++ ) {
+      progress[ id ] += STEP;
+      /* mark where we are */
+      track[ id+1 ][ progress[id]+HEADER ] = '*';
+      if ( progress[ id ] >= FINISH_LINE ) {
+	/* Show a dialog */
+	data->won_id = id;
+	pthread_t tid;
+	//pthread_create( &tid, NULL, win_dialog, (void *) data );
+	//win_dialog( (void *) data );
+	printf( "Horse #%02d has won!\n", id+1 );
+	return (void *) 0;
+      }
+    }
+
+    printTrack( data );
+    sleep( 1 );
+  }
+  return (void *) -1;
+}
+
+static void refreshTrack() {
+  memset( track[0], '=', TRACK_LENGTH );
+  track[ 0 ][ TRACK_LENGTH-1 ] = '\n';
+  int i;
+  for ( i = 1; i <= HORSE_NUM; i++ ) {
+    sprintf( track[i], "|Horse #%02d:", i );
+    memset( track[i]+11, ' ', TRACK_LENGTH );
+    track[ i ][ TRACK_LENGTH-2 ] = '|';
+    track[ i ][ TRACK_LENGTH-1 ] = '\n';
+  }
+  memset( track[ HORSE_NUM+1 ], '=', TRACK_LENGTH );
+  track[ i ] [ TRACK_LENGTH-1 ] = '\0';
+}
+
+static void printTrack( Data *data ) {
+  char track_text[ TRACK_WIDTH * TRACK_LENGTH + 1 ];
+  int i;
+  for ( i = 0; i < TRACK_WIDTH; i++ ) {
+    strncpy( track_text+(i*TRACK_LENGTH), track[i], TRACK_LENGTH );
+  }
+  /* track_text[ (i-1) * TRACK_LENGTH ] = '\0'; */
+  printf( "%s\n", track_text );
+  gtk_label_set_text( GTK_LABEL( data->label ), track_text );
+}
+
+/*
+ * Build the GUI
+ */
+static void buildGUI( int argc, char **argv ) {
+  gtk_init( &argc, &argv );
+  GtkWidget *main_window = gtk_window_new( GTK_WINDOW_TOPLEVEL );
+  gtk_window_set_title( GTK_WINDOW( main_window ), "Horse Race" );
+  gtk_widget_set_size_request( main_window, 640, 480 );
+  gtk_container_set_border_width( GTK_CONTAINER( main_window ), 10 );
+
+  GtkWidget *horse_num_spin_label = gtk_label_new( "Horse Number:" );
+  GtkWidget *horse_num_spin = gtk_spin_button_new( 
+      GTK_ADJUSTMENT( gtk_adjustment_new( 7.0, 1.0, 10.0, 1.0, 2.0, 0.0 ) ),
+      1.0, 0 );
+  GtkWidget *finish_line_entry_label = gtk_label_new( "Finish Line:" );
+  GtkWidget *finish_line_entry = gtk_entry_new();
+  gtk_entry_set_text( GTK_ENTRY( finish_line_entry ), "80" );
+  GtkWidget *race_label = gtk_label_new( "" );
+  GtkWidget *new_game_button = gtk_button_new_with_mnemonic( "_New Game" );
+  GtkWidget *start_game_button = gtk_button_new_with_mnemonic( "_Start Game" );
+  GtkWidget *exit_prog_button = gtk_button_new_with_mnemonic( "E_xit Game" );
+  Data data;
+  data.window = main_window;
+  data.spin = horse_num_spin;
+  data.entry = finish_line_entry;
+  data.label = race_label;
+
+  /* Connect event handlers to widgets */
+  g_signal_connect( G_OBJECT( main_window ), "delete_event",
+      G_CALLBACK( before_exit ), NULL );
+  g_signal_connect( G_OBJECT( new_game_button ), "clicked",
+      G_CALLBACK( new_game_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( start_game_button ), "clicked",
+      G_CALLBACK( start_game_clicked ), (gpointer) &data );
+  g_signal_connect( G_OBJECT( exit_prog_button ), "clicked",
+      G_CALLBACK( exit_prog_clicked ), (gpointer) &data );
+
+  /* Arrange those widgets and put them on main window */
+  GtkWidget *top_hbox = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( top_hbox ), horse_num_spin_label,
+      TRUE, TRUE, 10 );
+  gtk_box_pack_start( GTK_BOX( top_hbox ), horse_num_spin,
+      TRUE, TRUE, 10 );
+  gtk_box_pack_start( GTK_BOX( top_hbox ), finish_line_entry_label,
+      TRUE, TRUE, 10 );
+  gtk_box_pack_start( GTK_BOX( top_hbox ), finish_line_entry,
+      TRUE, TRUE, 10 );
+  GtkWidget *bot_hbox = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_end( GTK_BOX( bot_hbox ), exit_prog_button,
+      FALSE, FALSE, 2 );
+  gtk_box_pack_end( GTK_BOX( bot_hbox ), start_game_button,
+      FALSE, FALSE, 2 );
+  gtk_box_pack_end( GTK_BOX( bot_hbox ), new_game_button,
+      FALSE, FALSE, 2 );
+  GtkWidget *vbox = gtk_vbox_new( FALSE, 5 );
+  gtk_box_pack_start( GTK_BOX( vbox ), top_hbox, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), race_label, TRUE, TRUE, 10 );
+  gtk_box_pack_start( GTK_BOX( vbox ), bot_hbox, FALSE, FALSE, 10 );
+
+  gtk_container_add( GTK_CONTAINER( main_window ), vbox );
+  gtk_widget_show_all( main_window );
+  gtk_main();
+}
+
+/* event handler for cancel button of assistant */
+static void exit_prog_clicked( GtkWidget *button, Data *data ) {
+  /*
+   * Show a prompt dialog
+   */
+  before_exit( GTK_WINDOW( data->window ), NULL );
+}
+
+static gboolean before_exit( GtkWindow *window, gpointer data) {
+  /* show a dialog */
+  GtkWidget *dialog = gtk_dialog_new_with_buttons( "Information", window,
+      GTK_DIALOG_MODAL, GTK_STOCK_NO, GTK_RESPONSE_NO, GTK_STOCK_YES, GTK_RESPONSE_YES,
+      NULL );
+  gtk_dialog_set_has_separator( GTK_DIALOG( dialog ), TRUE );
+  GtkWidget *label = gtk_label_new( "Do you really want to leave Program Installation?" );
+  GtkWidget *image = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+      GTK_ICON_SIZE_DIALOG );
+
+  /* organize and arrange widgets on dialog */
+  GtkWidget *hbox = gtk_hbox_new( FALSE, 5 );
+  gtk_container_set_border_width( GTK_CONTAINER( hbox ), 10 );
+  gtk_box_pack_start( GTK_BOX( hbox ), image, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox ), label, FALSE, FALSE, 10 );
+  GtkWidget *ask_always = gtk_check_button_new_with_label( "Always ask before leaving." );
+  /*
+   * Here if you donot add ask_always on a hbox, add it on vbox directly, they
+   * look great differently.
+   * For homogenous, you'd better put all the widgets on boxes, even sometimes,
+   * there is only one widget.
+   */
+  GtkWidget *hbox_ask = gtk_hbox_new( TRUE, 5 );
+  gtk_box_pack_start( GTK_BOX( hbox_ask ), ask_always, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog)->vbox ), hbox, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog)->vbox ), hbox_ask, FALSE, FALSE, 10 );
+  gtk_widget_show_all( dialog );
+
+  int result; /* result of running dialog according to different clicking of user */
+  result = gtk_dialog_run( GTK_DIALOG( dialog ) );
+  if ( result == GTK_RESPONSE_YES ) {
+    gtk_main_quit();
+    return TRUE;
+  }
+  gtk_widget_destroy( dialog );
+  return TRUE;
+}
+
+/*
+ * Use a dialog tell them who won.
+ */
+static void *win_dialog( void *d ) {
+  Data *data = (Data *) d;
+  /* show a dialog */
+  GtkWidget *dialog = gtk_dialog_new_with_buttons( "Game Over", GTK_WINDOW( data->window ),
+      GTK_DIALOG_MODAL, GTK_STOCK_YES, GTK_RESPONSE_YES, NULL );
+  gtk_dialog_set_has_separator( GTK_DIALOG( dialog ), TRUE );
+  char buf[ TRACK_LENGTH ];
+  sprintf( buf, "Horse #%02d has won!\n", data->won_id );
+  GtkWidget *label = gtk_label_new( buf );
+  GtkWidget *image = gtk_image_new_from_stock( GTK_STOCK_DIALOG_INFO,
+      GTK_ICON_SIZE_DIALOG );
+
+  /* organize and arrange widgets on dialog */
+  GtkWidget *hbox = gtk_hbox_new( FALSE, 5 );
+  gtk_container_set_border_width( GTK_CONTAINER( hbox ), 10 );
+  gtk_box_pack_start( GTK_BOX( hbox ), image, FALSE, FALSE, 10 );
+  gtk_box_pack_start( GTK_BOX( hbox ), label, FALSE, FALSE, 10 );
+  /*
+   * Here if you donot add ask_always on a hbox, add it on vbox directly, they
+   * look great differently.
+   * For homogenous, you'd better put all the widgets on boxes, even sometimes,
+   * there is only one widget.
+   */
+  gtk_box_pack_start( GTK_BOX( GTK_DIALOG(dialog)->vbox ), hbox, FALSE, FALSE, 10 );
+  gtk_widget_show_all( dialog );
+
+  int result; /* result of running dialog according to different clicking of user */
+  result = gtk_dialog_run( GTK_DIALOG( dialog ) );
+  gtk_widget_destroy( dialog );
+  return (void *) 0;
+}
+/* End of $Source: /home/alex/work/gtk-work/gtk-examples/widget/horserace.c,v $ */
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 4
+a5 4
+ * $Header$
+ * $Author$
+ * $Date$
+ * RCS id: $Id$
+d9 5
+a13 2
+ * $Revision$
+ * $Log$
+d91 2
+a92 1
+	win_dialog( (void *) data );
+d272 1
+a272 1
+/* End of $Source$ */
+@

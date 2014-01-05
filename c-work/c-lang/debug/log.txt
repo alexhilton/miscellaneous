@@ -1,0 +1,7 @@
+debug.c Mon Feb  8 22:09:12 2010
+this is main functiondebug.c Mon Feb  8 22:09:12 2010
+this is a string 'abcdefg'
+debug.c Mon Feb  8 22:09:54 2010
+this is main function
+debug.c Mon Feb  8 22:09:54 2010
+this is a string 'abcdefg'

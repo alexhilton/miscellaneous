@@ -1,0 +1,29 @@
+#!/usr/bin/perl -w
+foreach (@ARGV) {
+    unless (chdir $_) {
+        print "cannot change to $_: $!";
+        next;
+    }
+    system "ls", "-l", "> ls.out", "2> ls.err";
+}
+
+die;
+# system version
+foreach (@ARGV) {
+    print "'$_' is going\n";
+    if (system "cd $_") {
+        print "cannot change to $_:$!\n";
+        next;
+    }
+    system "ls", "-l";
+}
+
+# exec version
+foreach (@ARGV) {
+    print "'$_' is going\n";
+    if (system "cd $_") {
+        print "cannot change to $_:$!\n";
+        next;
+    }
+    exec "ls", "-l";
+}
