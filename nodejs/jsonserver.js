@@ -1,4 +1,5 @@
 var http = require('http');
+var url = require('url');
 var server = http.createServer(function (req, res) {
     if (req.method !== 'GET') {
         res.write('Send me an GET\n');
@@ -6,30 +7,21 @@ var server = http.createServer(function (req, res) {
         return;
     }
     //console.log(req.url);
-    var pathp = /^(https?:\/\/)?[a-zA-Z0-9\-.:]+(\/.+)$/;
-    var um = pathp.exec(req.url);
-    var path = um && um[2];
-    if (!path && req.url[0] === '/') {
-        path = req.url;
-    }
-    if (!path) {
+    var theUrl = url.parse(req.url, true);
+
+    if (!theUrl.pathname) {
         res.write('404 Not Found.\n');
         res.end();
         return;
     }
-    var pqp = /^(.+)\?(.+)$/.exec(path);
-    path = pqp[1];
-    var query = pqp[2];
-    //console.log(path);
-    //console.log(query);
-    if (path === '/api/unixtime') {
-        var ump = /^iso=(.+)$/.exec(query);
+    if (theUrl.pathname === '/api/unixtime') {
+        var ump = theUrl.query['iso'];
         res.writeHead(200, {'Content-Type': 'application/json'});
-        res.write(JSON.stringify({unixtime: new Date(ump[1].toLocaleString()).getTime()}));
+        res.write(JSON.stringify({unixtime: new Date(ump.toLocaleString()).getTime()}));
         res.end();
-    } else if (path === '/api/parsetime') {
-        var uum = /^iso=(.+)$/.exec(query);
-        var d = new Date(uum[1].toLocaleString());
+    } else if (theUrl.pathname === '/api/parsetime') {
+        var uum = theUrl.query['iso'];
+        var d = new Date(uum.toLocaleString());
         res.writeHead(200, {'Content-Type': 'application/json'});
         res.write(JSON.stringify({
             hour: d.getHours(),
